@@ -829,6 +829,10 @@ def int_convert_from_fp16 : Intrinsic<[llvm_anyfloat_ty], [llvm_i16_ty]>;
 def int_clear_cache : Intrinsic<[], [llvm_ptr_ty, llvm_ptr_ty],
                                 [], "llvm.clear_cache">;
 
+let IntrProperties = [IntrNoMem] in {
+def int_psub : Intrinsic<[llvm_anyint_ty], [llvm_anyptr_ty, llvm_anyptr_ty]>;
+}
+
 //===-------------------------- Masked Intrinsics -------------------------===//
 //
 def int_masked_store : Intrinsic<[], [llvm_anyvector_ty,
