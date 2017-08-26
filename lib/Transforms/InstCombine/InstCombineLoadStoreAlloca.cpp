@@ -584,6 +584,20 @@ static bool isMinMaxWithLoads(Value *V) {
           match(L2, m_Load(m_Specific(LHS))));
 }
 
+static bool containsPointerType(Type *Ty) {
+  if (isa<PointerType>(Ty))
+    return true;
+  else if (StructType *ST = dyn_cast<StructType>(Ty)) {
+    for (auto itr = ST->element_begin(); itr != ST->element_end(); itr++) {
+      if (containsPointerType(*itr))
+        return true;
+    }
+  } else if (SequentialType *ST = dyn_cast<SequentialType>(Ty))
+    if (containsPointerType(ST->getElementType()))
+      return true;
+  return false;
+}
+
 /// \brief Combine loads to match the type of their uses' value after looking
 /// through intervening bitcasts.
 ///
@@ -620,15 +634,16 @@ static Instruction *combineLoadToOperationType(InstCombiner &IC, LoadInst &LI) {
   // Try to canonicalize loads which are only ever stored to operate over
   // integers instead of any other type. We only do this when the loaded type
   // is sized and has a size exactly the same as its store size and the store
-  // size is a legal integer type.
+  // size is a legal integer type and it is neither a pointer type or
+  // a struct type that has pointer in it.
   // Do not perform canonicalization if minmax pattern is found (to avoid
   // infinite loop).
-  if (!Ty->isIntegerTy() && Ty->isSized() &&
+  if (!Ty->isIntegerTy() && !Ty->isPointerTy() && Ty->isSized() &&
       DL.isLegalInteger(DL.getTypeStoreSizeInBits(Ty)) &&
       DL.getTypeStoreSizeInBits(Ty) == DL.getTypeSizeInBits(Ty) &&
-      !DL.isNonIntegralPointerType(Ty) &&
       !isMinMaxWithLoads(
-          peekThroughBitcast(LI.getPointerOperand(), /*OneUseOnly=*/true))) {
+          peekThroughBitcast(LI.getPointerOperand(), /*OneUseOnly=*/true)) &&
+      !containsPointerType(Ty)) {
     if (all_of(LI.users(), [&LI](User *U) {
           auto *SI = dyn_cast<StoreInst>(U);
           return SI && SI->getPointerOperand() != &LI &&
@@ -656,7 +671,7 @@ static Instruction *combineLoadToOperationType(InstCombiner &IC, LoadInst &LI) {
   // bitwidth as the target's pointers).
   if (LI.hasOneUse())
     if (auto* CI = dyn_cast<CastInst>(LI.user_back()))
-      if (CI->isNoopCast(DL))
+      if (CI->isNoopCast(DL) && !isa<PtrToIntInst>(CI) && !isa<IntToPtrInst>(CI))
         if (!LI.isAtomic() || isSupportedAtomicType(CI->getDestTy())) {
           LoadInst *NewLoad = combineLoadToNewType(IC, LI, CI->getDestTy());
           CI->replaceAllUsesWith(NewLoad);
