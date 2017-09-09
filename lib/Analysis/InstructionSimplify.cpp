@@ -3602,7 +3602,7 @@ static Value *simplifySelectWithICmpCond(Value *CondVal, Value *TrueVal,
   // If we have an equality comparison, then we know the value in one of the
   // arms of the select. See if substituting this value into the arm and
   // simplifying the result yields the same value as the other arm.
-  if (Pred == ICmpInst::ICMP_EQ) {
+  if (Pred == ICmpInst::ICMP_EQ && !CmpLHS->getType()->isPtrOrPtrVectorTy()) {
     if (SimplifyWithOpReplaced(FalseVal, CmpLHS, CmpRHS, Q, MaxRecurse) ==
             TrueVal ||
         SimplifyWithOpReplaced(FalseVal, CmpRHS, CmpLHS, Q, MaxRecurse) ==
@@ -3613,7 +3613,7 @@ static Value *simplifySelectWithICmpCond(Value *CondVal, Value *TrueVal,
         SimplifyWithOpReplaced(TrueVal, CmpRHS, CmpLHS, Q, MaxRecurse) ==
             FalseVal)
       return FalseVal;
-  } else if (Pred == ICmpInst::ICMP_NE) {
+  } else if (Pred == ICmpInst::ICMP_NE && !CmpLHS->getType()->isPtrOrPtrVectorTy()) {
     if (SimplifyWithOpReplaced(TrueVal, CmpLHS, CmpRHS, Q, MaxRecurse) ==
             FalseVal ||
         SimplifyWithOpReplaced(TrueVal, CmpRHS, CmpLHS, Q, MaxRecurse) ==
