@@ -1756,12 +1756,12 @@ Instruction *InstCombiner::visitGetElementPtrInst(GetElementPtrInst &GEP) {
         }
         // Canonicalize (gep i8* X, (ptrtoint Y)-(ptrtoint X))
         // to (bitcast Y)
-        Value *Y;
-        if (match(V, m_Sub(m_PtrToInt(m_Value(Y)),
-                           m_PtrToInt(m_Specific(GEP.getOperand(0)))))) {
-          return CastInst::CreatePointerBitCastOrAddrSpaceCast(Y,
-                                                               GEP.getType());
-        }
+        //Value *Y;
+        //if (match(V, m_Sub(m_PtrToInt(m_Value(Y)),
+        //                   m_PtrToInt(m_Specific(GEP.getOperand(0)))))) {
+        //  return CastInst::CreatePointerBitCastOrAddrSpaceCast(Y,
+        //                                                       GEP.getType());
+        //}
       }
     }
   }

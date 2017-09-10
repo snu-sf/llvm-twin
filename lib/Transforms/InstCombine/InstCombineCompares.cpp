@@ -809,6 +809,7 @@ getAsConstantIndexedAddress(Value *V, const DataLayout &DL) {
       }
       break;
     }
+    /*
     if (auto *CI = dyn_cast<IntToPtrInst>(V)) {
       if (!CI->isNoopCast(DL))
         break;
@@ -821,6 +822,7 @@ getAsConstantIndexedAddress(Value *V, const DataLayout &DL) {
       V = CI->getOperand(0);
       continue;
     }
+    */
     break;
   }
   return {V, Index};
