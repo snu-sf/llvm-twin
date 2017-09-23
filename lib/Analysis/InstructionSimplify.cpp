@@ -764,6 +764,9 @@ static Value *SimplifySubInst(Value *Op0, Value *Op1, bool isNSW, bool isNUW,
           return W;
 
   // Variations on GEP(base, I, ...) - GEP(base, i, ...) -> GEP(null, I-i, ...).
+  // This is actually "GEP(base, I, ..) - GEP(base, i, ..) -> I-i".
+  // This optimization is allowed. Note that PtrToInt should not be removed
+  // (if PtrToInt contains capturing effect as well)
   if (match(Op0, m_PtrToInt(m_Value(X))) &&
       match(Op1, m_PtrToInt(m_Value(Y))))
     if (Constant *Result = computePointerDifference(Q.DL, X, Y))
@@ -3055,22 +3058,22 @@ static Value *SimplifyICmpInst(unsigned Predicate, Value *LHS, Value *RHS,
 
     // Turn icmp (ptrtoint x), (ptrtoint/constant) into a compare of the input
     // if the integer type is the same size as the pointer type.
-    if (MaxRecurse && isa<PtrToIntInst>(LI) &&
-        Q.DL.getTypeSizeInBits(SrcTy) == DstTy->getPrimitiveSizeInBits()) {
-      if (Constant *RHSC = dyn_cast<Constant>(RHS)) {
-        // Transfer the cast to the constant.
-        if (Value *V = SimplifyICmpInst(Pred, SrcOp,
-                                        ConstantExpr::getIntToPtr(RHSC, SrcTy),
-                                        Q, MaxRecurse-1))
-          return V;
-      } else if (PtrToIntInst *RI = dyn_cast<PtrToIntInst>(RHS)) {
-        if (RI->getOperand(0)->getType() == SrcTy)
-          // Compare without the cast.
-          if (Value *V = SimplifyICmpInst(Pred, SrcOp, RI->getOperand(0),
-                                          Q, MaxRecurse-1))
-            return V;
-      }
-    }
+    //if (MaxRecurse && isa<PtrToIntInst>(LI) &&
+    //    Q.DL.getTypeSizeInBits(SrcTy) == DstTy->getPrimitiveSizeInBits()) {
+    //  if (Constant *RHSC = dyn_cast<Constant>(RHS)) {
+    //    // Transfer the cast to the constant.
+    //    if (Value *V = SimplifyICmpInst(Pred, SrcOp,
+    //                                    ConstantExpr::getIntToPtr(RHSC, SrcTy),
+    //                                    Q, MaxRecurse-1))
+    //      return V;
+    //  } else if (PtrToIntInst *RI = dyn_cast<PtrToIntInst>(RHS)) {
+    //    if (RI->getOperand(0)->getType() == SrcTy)
+    //      // Compare without the cast.
+    //      if (Value *V = SimplifyICmpInst(Pred, SrcOp, RI->getOperand(0),
+    //                                      Q, MaxRecurse-1))
+    //        return V;
+    //  }
+    //}
 
     if (isa<ZExtInst>(LHS)) {
       // Turn icmp (zext X), (zext Y) into a compare of X and Y if they have the
@@ -3223,16 +3226,16 @@ static Value *SimplifyICmpInst(unsigned Predicate, Value *LHS, Value *RHS,
     if (auto *C = computePointerICmp(Q.DL, Q.TLI, Q.DT, Pred, Q.AC, Q.CxtI, LHS,
                                      RHS))
       return C;
-  if (auto *CLHS = dyn_cast<PtrToIntOperator>(LHS))
-    if (auto *CRHS = dyn_cast<PtrToIntOperator>(RHS))
-      if (Q.DL.getTypeSizeInBits(CLHS->getPointerOperandType()) ==
-              Q.DL.getTypeSizeInBits(CLHS->getType()) &&
-          Q.DL.getTypeSizeInBits(CRHS->getPointerOperandType()) ==
-              Q.DL.getTypeSizeInBits(CRHS->getType()))
-        if (auto *C = computePointerICmp(Q.DL, Q.TLI, Q.DT, Pred, Q.AC, Q.CxtI,
-                                         CLHS->getPointerOperand(),
-                                         CRHS->getPointerOperand()))
-          return C;
+  //if (auto *CLHS = dyn_cast<PtrToIntOperator>(LHS))
+  //  if (auto *CRHS = dyn_cast<PtrToIntOperator>(RHS))
+  //    if (Q.DL.getTypeSizeInBits(CLHS->getPointerOperandType()) ==
+  //            Q.DL.getTypeSizeInBits(CLHS->getType()) &&
+  //        Q.DL.getTypeSizeInBits(CRHS->getPointerOperandType()) ==
+  //            Q.DL.getTypeSizeInBits(CRHS->getType()))
+  //      if (auto *C = computePointerICmp(Q.DL, Q.TLI, Q.DT, Pred, Q.AC, Q.CxtI,
+  //                                       CLHS->getPointerOperand(),
+  //                                       CRHS->getPointerOperand()))
+  //        return C;
 
   if (GetElementPtrInst *GLHS = dyn_cast<GetElementPtrInst>(LHS)) {
     if (GEPOperator *GRHS = dyn_cast<GEPOperator>(RHS)) {
@@ -3711,41 +3714,41 @@ static Value *SimplifyGEPInst(Type *SrcTy, ArrayRef<Value *> Ops,
 
       // The following transforms are only safe if the ptrtoint cast
       // doesn't truncate the pointers.
-      if (Ops[1]->getType()->getScalarSizeInBits() ==
-          Q.DL.getPointerSizeInBits(AS)) {
-        auto PtrToIntOrZero = [GEPTy](Value *P) -> Value * {
-          if (match(P, m_Zero()))
-            return Constant::getNullValue(GEPTy);
-          Value *Temp;
-          if (match(P, m_PtrToInt(m_Value(Temp))))
-            if (Temp->getType() == GEPTy)
-              return Temp;
-          return nullptr;
-        };
+      //if (Ops[1]->getType()->getScalarSizeInBits() ==
+      //    Q.DL.getPointerSizeInBits(AS)) {
+      //  auto PtrToIntOrZero = [GEPTy](Value *P) -> Value * {
+      //    if (match(P, m_Zero()))
+      //      return Constant::getNullValue(GEPTy);
+      //    Value *Temp;
+      //    if (match(P, m_PtrToInt(m_Value(Temp))))
+      //      if (Temp->getType() == GEPTy)
+      //        return Temp;
+      //    return nullptr;
+      //  };
 
-        // getelementptr V, (sub P, V) -> P if P points to a type of size 1.
-        if (TyAllocSize == 1 &&
-            match(Ops[1], m_Sub(m_Value(P), m_PtrToInt(m_Specific(Ops[0])))))
-          if (Value *R = PtrToIntOrZero(P))
-            return R;
+      //  // getelementptr V, (sub P, V) -> P if P points to a type of size 1.
+      //  if (TyAllocSize == 1 &&
+      //      match(Ops[1], m_Sub(m_Value(P), m_PtrToInt(m_Specific(Ops[0])))))
+      //    if (Value *R = PtrToIntOrZero(P))
+      //      return R;
 
-        // getelementptr V, (ashr (sub P, V), C) -> Q
-        // if P points to a type of size 1 << C.
-        if (match(Ops[1],
-                  m_AShr(m_Sub(m_Value(P), m_PtrToInt(m_Specific(Ops[0]))),
-                         m_ConstantInt(C))) &&
-            TyAllocSize == 1ULL << C)
-          if (Value *R = PtrToIntOrZero(P))
-            return R;
+      //  // getelementptr V, (ashr (sub P, V), C) -> Q
+      //  // if P points to a type of size 1 << C.
+      //  if (match(Ops[1],
+      //            m_AShr(m_Sub(m_Value(P), m_PtrToInt(m_Specific(Ops[0]))),
+      //                   m_ConstantInt(C))) &&
+      //      TyAllocSize == 1ULL << C)
+      //    if (Value *R = PtrToIntOrZero(P))
+      //      return R;
 
-        // getelementptr V, (sdiv (sub P, V), C) -> Q
-        // if P points to a type of size C.
-        if (match(Ops[1],
-                  m_SDiv(m_Sub(m_Value(P), m_PtrToInt(m_Specific(Ops[0]))),
-                         m_SpecificInt(TyAllocSize))))
-          if (Value *R = PtrToIntOrZero(P))
-            return R;
-      }
+      //  // getelementptr V, (sdiv (sub P, V), C) -> Q
+      //  // if P points to a type of size C.
+      //  if (match(Ops[1],
+      //            m_SDiv(m_Sub(m_Value(P), m_PtrToInt(m_Specific(Ops[0]))),
+      //                   m_SpecificInt(TyAllocSize))))
+      //    if (Value *R = PtrToIntOrZero(P))
+      //      return R;
+      //}
     }
   }
 
