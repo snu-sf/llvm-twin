@@ -193,73 +193,74 @@ Instruction *InstCombiner::SimplifyMemTransfer(MemIntrinsic *MI) {
     MI->setAlignment(ConstantInt::get(MI->getAlignmentType(), MinAlign, false));
     return MI;
   }
+  return nullptr;
 
-  // If MemCpyInst length is 1/2/4/8 bytes then replace memcpy with
-  // load/store.
-  ConstantInt *MemOpLength = dyn_cast<ConstantInt>(MI->getArgOperand(2));
-  if (!MemOpLength) return nullptr;
+  // // If MemCpyInst length is 1/2/4/8 bytes then replace memcpy with
+  // // load/store.
+  // ConstantInt *MemOpLength = dyn_cast<ConstantInt>(MI->getArgOperand(2));
+  // if (!MemOpLength) return nullptr;
 
-  // Source and destination pointer types are always "i8*" for intrinsic.  See
-  // if the size is something we can handle with a single primitive load/store.
-  // A single load+store correctly handles overlapping memory in the memmove
-  // case.
-  uint64_t Size = MemOpLength->getLimitedValue();
-  assert(Size && "0-sized memory transferring should be removed already.");
+  // // Source and destination pointer types are always "i8*" for intrinsic.  See
+  // // if the size is something we can handle with a single primitive load/store.
+  // // A single load+store correctly handles overlapping memory in the memmove
+  // // case.
+  // uint64_t Size = MemOpLength->getLimitedValue();
+  // assert(Size && "0-sized memory transferring should be removed already.");
 
-  if (Size > 8 || (Size&(Size-1)))
-    return nullptr;  // If not 1/2/4/8 bytes, exit.
+  // if (Size > 8 || (Size&(Size-1)))
+  //   return nullptr;  // If not 1/2/4/8 bytes, exit.
 
-  // Use an integer load+store unless we can find something better.
-  unsigned SrcAddrSp =
-    cast<PointerType>(MI->getArgOperand(1)->getType())->getAddressSpace();
-  unsigned DstAddrSp =
-    cast<PointerType>(MI->getArgOperand(0)->getType())->getAddressSpace();
+  // // Use an integer load+store unless we can find something better.
+  // unsigned SrcAddrSp =
+  //   cast<PointerType>(MI->getArgOperand(1)->getType())->getAddressSpace();
+  // unsigned DstAddrSp =
+  //   cast<PointerType>(MI->getArgOperand(0)->getType())->getAddressSpace();
 
-  IntegerType* IntType = IntegerType::get(MI->getContext(), Size<<3);
-  Type *NewSrcPtrTy = PointerType::get(IntType, SrcAddrSp);
-  Type *NewDstPtrTy = PointerType::get(IntType, DstAddrSp);
+  // IntegerType* IntType = IntegerType::get(MI->getContext(), Size<<3);
+  // Type *NewSrcPtrTy = PointerType::get(IntType, SrcAddrSp);
+  // Type *NewDstPtrTy = PointerType::get(IntType, DstAddrSp);
 
-  // If the memcpy has metadata describing the members, see if we can get the
-  // TBAA tag describing our copy.
-  MDNode *CopyMD = nullptr;
-  if (MDNode *M = MI->getMetadata(LLVMContext::MD_tbaa_struct)) {
-    if (M->getNumOperands() == 3 && M->getOperand(0) &&
-        mdconst::hasa<ConstantInt>(M->getOperand(0)) &&
-        mdconst::extract<ConstantInt>(M->getOperand(0))->isZero() &&
-        M->getOperand(1) &&
-        mdconst::hasa<ConstantInt>(M->getOperand(1)) &&
-        mdconst::extract<ConstantInt>(M->getOperand(1))->getValue() ==
-        Size &&
-        M->getOperand(2) && isa<MDNode>(M->getOperand(2)))
-      CopyMD = cast<MDNode>(M->getOperand(2));
-  }
+  // // If the memcpy has metadata describing the members, see if we can get the
+  // // TBAA tag describing our copy.
+  // MDNode *CopyMD = nullptr;
+  // if (MDNode *M = MI->getMetadata(LLVMContext::MD_tbaa_struct)) {
+  //   if (M->getNumOperands() == 3 && M->getOperand(0) &&
+  //       mdconst::hasa<ConstantInt>(M->getOperand(0)) &&
+  //       mdconst::extract<ConstantInt>(M->getOperand(0))->isZero() &&
+  //       M->getOperand(1) &&
+  //       mdconst::hasa<ConstantInt>(M->getOperand(1)) &&
+  //       mdconst::extract<ConstantInt>(M->getOperand(1))->getValue() ==
+  //       Size &&
+  //       M->getOperand(2) && isa<MDNode>(M->getOperand(2)))
+  //     CopyMD = cast<MDNode>(M->getOperand(2));
+  // }
 
-  // If the memcpy/memmove provides better alignment info than we can
-  // infer, use it.
-  SrcAlign = std::max(SrcAlign, CopyAlign);
-  DstAlign = std::max(DstAlign, CopyAlign);
+  // // If the memcpy/memmove provides better alignment info than we can
+  // // infer, use it.
+  // SrcAlign = std::max(SrcAlign, CopyAlign);
+  // DstAlign = std::max(DstAlign, CopyAlign);
 
-  Value *Src = Builder.CreateBitCast(MI->getArgOperand(1), NewSrcPtrTy);
-  Value *Dest = Builder.CreateBitCast(MI->getArgOperand(0), NewDstPtrTy);
-  LoadInst *L = Builder.CreateLoad(Src, MI->isVolatile());
-  L->setAlignment(SrcAlign);
-  if (CopyMD)
-    L->setMetadata(LLVMContext::MD_tbaa, CopyMD);
-  MDNode *LoopMemParallelMD =
-    MI->getMetadata(LLVMContext::MD_mem_parallel_loop_access);
-  if (LoopMemParallelMD)
-    L->setMetadata(LLVMContext::MD_mem_parallel_loop_access, LoopMemParallelMD);
+  // Value *Src = Builder.CreateBitCast(MI->getArgOperand(1), NewSrcPtrTy);
+  // Value *Dest = Builder.CreateBitCast(MI->getArgOperand(0), NewDstPtrTy);
+  // LoadInst *L = Builder.CreateLoad(Src, MI->isVolatile());
+  // L->setAlignment(SrcAlign);
+  // if (CopyMD)
+  //   L->setMetadata(LLVMContext::MD_tbaa, CopyMD);
+  // MDNode *LoopMemParallelMD =
+  //   MI->getMetadata(LLVMContext::MD_mem_parallel_loop_access);
+  // if (LoopMemParallelMD)
+  //   L->setMetadata(LLVMContext::MD_mem_parallel_loop_access, LoopMemParallelMD);
 
-  StoreInst *S = Builder.CreateStore(L, Dest, MI->isVolatile());
-  S->setAlignment(DstAlign);
-  if (CopyMD)
-    S->setMetadata(LLVMContext::MD_tbaa, CopyMD);
-  if (LoopMemParallelMD)
-    S->setMetadata(LLVMContext::MD_mem_parallel_loop_access, LoopMemParallelMD);
+  // StoreInst *S = Builder.CreateStore(L, Dest, MI->isVolatile());
+  // S->setAlignment(DstAlign);
+  // if (CopyMD)
+  //   S->setMetadata(LLVMContext::MD_tbaa, CopyMD);
+  // if (LoopMemParallelMD)
+  //   S->setMetadata(LLVMContext::MD_mem_parallel_loop_access, LoopMemParallelMD);
 
-  // Set the size of the copy to 0, it will be deleted on the next iteration.
-  MI->setArgOperand(2, Constant::getNullValue(MemOpLength->getType()));
-  return MI;
+  // // Set the size of the copy to 0, it will be deleted on the next iteration.
+  // MI->setArgOperand(2, Constant::getNullValue(MemOpLength->getType()));
+  // return MI;
 }
 
 Instruction *InstCombiner::SimplifyMemSet(MemSetInst *MI) {
