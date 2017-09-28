@@ -965,9 +965,18 @@ bool GVN::AnalyzeLoadAvailability(LoadInst *LI, MemDepResult DepInfo,
     // If the types mismatch and we can't handle it, reject reuse of the load.
     // If the stored value is larger or equal to the loaded value, we can reuse
     // it.
-    if (LD->getType() != LI->getType() &&
-        !canCoerceMustAliasedValueToLoad(LD, LI->getType(), DL))
-      return false;
+    if (LD->getType() != LI->getType()) {
+      // If LI has pointer type and LD has integer type
+      // (or vice versa), it cannot be transformed.
+      Type *LDTy = LD->getType();
+      Type *LITy = LI->getType();
+      if ((LDTy->isPtrOrPtrVectorTy() && LITy->isIntOrIntVectorTy()) ||
+          (LDTy->isIntOrIntVectorTy() && LITy->isPtrOrPtrVectorTy()))
+        return false;
+
+      if (!canCoerceMustAliasedValueToLoad(LD, LITy, DL))
+        return false;
+    }
 
     // Can't forward from non-atomic to atomic without violating memory model.
     if (LD->isAtomic() < LI->isAtomic())
