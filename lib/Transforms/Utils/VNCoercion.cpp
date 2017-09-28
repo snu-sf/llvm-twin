@@ -219,7 +219,14 @@ int analyzeLoadFromClobberingStore(Type *LoadTy, Value *LoadPtr,
 int analyzeLoadFromClobberingLoad(Type *LoadTy, Value *LoadPtr, LoadInst *DepLI,
                                   const DataLayout &DL) {
   // Cannot handle reading from store of first-class aggregate yet.
-  if (DepLI->getType()->isStructTy() || DepLI->getType()->isArrayTy())
+  Type *DepLITy = DepLI->getType();
+  if (DepLITy->isStructTy() || DepLITy->isArrayTy())
+    return -1;
+
+  // If it is loaded as a pointer type and integer value was previously
+  // written (or vice versa), it cannot be transformed.
+  if ((DepLITy->isPtrOrPtrVectorTy() && LoadTy->isIntOrIntVectorTy()) ||
+      (DepLITy->isIntOrIntVectorTy() && LoadTy->isPtrOrPtrVectorTy()))
     return -1;
 
   Value *DepPtr = DepLI->getPointerOperand();
