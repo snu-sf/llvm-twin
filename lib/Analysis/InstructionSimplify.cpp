@@ -4609,6 +4609,11 @@ static Value *SimplifyIntrinsic(Function *F, IterTy ArgBegin, IterTy ArgEnd,
           return LHS;
       }
       return nullptr;
+    case Intrinsic::psub: {
+      if (Constant *Result = computePointerDifference(Q.DL, LHS, RHS))
+        return ConstantExpr::getIntegerCast(Result, F->getReturnType(), true);
+      return nullptr;
+    }
     default:
       return nullptr;
     }
