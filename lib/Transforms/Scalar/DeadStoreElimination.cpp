@@ -737,7 +737,8 @@ static bool handleEndBlock(BasicBlock &BB, AliasAnalysis *AA,
 
     // Okay, so these are dead heap objects, but if the pointer never escapes
     // then it's leaked by this function anyways.
-    else if (isAllocLikeFn(&I, TLI) && !PointerMayBeCaptured(&I, true, true))
+    else if (isAllocLikeFn(&I, TLI) &&
+             !PointerMayBeCaptured(&I, true, true, TLI))
       DeadStackObjects.insert(&I);
   }
 
@@ -1131,7 +1132,7 @@ static bool eliminateDeadStores(BasicBlock &BB, AliasAnalysis *AA,
             // throwing instruction; PointerMayBeCaptured
             // reasonably fast approximation.
             IsStoreDeadOnUnwind = isAllocLikeFn(Underlying, TLI) &&
-                !PointerMayBeCaptured(Underlying, false, true);
+                !PointerMayBeCaptured(Underlying, false, true, TLI);
         }
         if (!IsStoreDeadOnUnwind)
           break;

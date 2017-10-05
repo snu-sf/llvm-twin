@@ -233,11 +233,14 @@ public:
 /// ForwardVarArgsTo. The caller of InlineFunction has to make sure any varargs
 /// are only used by ForwardVarArgsTo.
 bool InlineFunction(CallInst *C, InlineFunctionInfo &IFI,
-                    AAResults *CalleeAAR = nullptr, bool InsertLifetime = true);
+                    AAResults *CalleeAAR = nullptr, bool InsertLifetime = true,
+                    const TargetLibraryInfo *TLI = nullptr);
 bool InlineFunction(InvokeInst *II, InlineFunctionInfo &IFI,
-                    AAResults *CalleeAAR = nullptr, bool InsertLifetime = true);
+                    AAResults *CalleeAAR = nullptr, bool InsertLifetime = true,
+                    const TargetLibraryInfo *TLI = nullptr);
 bool InlineFunction(CallSite CS, InlineFunctionInfo &IFI,
                     AAResults *CalleeAAR = nullptr, bool InsertLifetime = true,
+                    const TargetLibraryInfo *TLI = nullptr,
                     Function *ForwardVarArgsTo = nullptr);
 
 /// \brief Clones a loop \p OrigLoop.  Returns the loop and the blocks in \p

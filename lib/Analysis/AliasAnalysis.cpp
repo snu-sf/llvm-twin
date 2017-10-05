@@ -541,7 +541,7 @@ ModRefInfo AAResults::callCapturesBefore(const Instruction *I,
     return ModRefInfo::ModRef;
 
   if (PointerMayBeCapturedBefore(Object, /* ReturnCaptures */ true,
-                                 /* StoreCaptures */ true, I, DT,
+                                 /* StoreCaptures */ true, I, DT, &TLI,
                                  /* include Object */ true,
                                  /* OrderedBasicBlock */ OBB))
     return ModRefInfo::ModRef;

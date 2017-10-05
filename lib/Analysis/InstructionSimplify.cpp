@@ -2140,7 +2140,7 @@ computePointerICmp(const DataLayout &DL, const TargetLibraryInfo *TLI,
       MI = RHS;
     // FIXME: We should also fold the compare when the pointer escapes, but the
     // compare dominates the pointer escape
-    if (MI && !PointerMayBeCaptured(MI, true, true))
+    if (MI && !PointerMayBeCaptured(MI, true, true, TLI))
       return ConstantInt::get(GetCompareTy(LHS),
                               CmpInst::isFalseWhenEqual(Pred));
   }

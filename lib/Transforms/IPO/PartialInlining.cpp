@@ -203,9 +203,10 @@ struct PartialInlinerImpl {
       std::function<TargetTransformInfo &(Function &)> *GTTI,
       Optional<function_ref<BlockFrequencyInfo &(Function &)>> GBFI,
       ProfileSummaryInfo *ProfSI,
-      std::function<OptimizationRemarkEmitter &(Function &)> *GORE)
+      std::function<OptimizationRemarkEmitter &(Function &)> *GORE,
+      const TargetLibraryInfo *TLI)
       : GetAssumptionCache(GetAC), GetTTI(GTTI), GetBFI(GBFI), PSI(ProfSI),
-        GetORE(GORE) {}
+        GetORE(GORE), TLI(TLI) {}
 
   bool run(Module &M);
   // Main part of the transformation that calls helper functions to find
@@ -272,6 +273,7 @@ private:
   Optional<function_ref<BlockFrequencyInfo &(Function &)>> GetBFI;
   ProfileSummaryInfo *PSI;
   std::function<OptimizationRemarkEmitter &(Function &)> *GetORE;
+  const TargetLibraryInfo *TLI;
 
   // Return the frequency of the OutlininingBB relative to F's entry point.
   // The result is no larger than 1 and is represented using BP.
@@ -351,6 +353,7 @@ struct PartialInlinerLegacyPass : public ModulePass {
     AU.addRequired<AssumptionCacheTracker>();
     AU.addRequired<ProfileSummaryInfoWrapperPass>();
     AU.addRequired<TargetTransformInfoWrapperPass>();
+    AU.addRequired<TargetLibraryInfoWrapperPass>();
   }
 
   bool runOnModule(Module &M) override {
@@ -380,8 +383,10 @@ struct PartialInlinerLegacyPass : public ModulePass {
       return *UPORE.get();
     };
 
+    auto &TLI = getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
+
     return PartialInlinerImpl(&GetAssumptionCache, &GetTTI, NoneType::None, PSI,
-                              &GetORE)
+                              &GetORE, &TLI)
         .run(M);
   }
 };
@@ -1407,7 +1412,7 @@ bool PartialInlinerImpl::tryPartialInline(FunctionCloner &Cloner) {
     InlineFunctionInfo IFI(nullptr, GetAssumptionCache, PSI);
     // We can only forward varargs when we outlined a single region, else we
     // bail on vararg functions.
-    if (!InlineFunction(CS, IFI, nullptr, true,
+    if (!InlineFunction(CS, IFI, nullptr, true, TLI,
                         (Cloner.ClonedOI ? Cloner.OutlinedFunctions.back().first
                                          : nullptr)))
       continue;
@@ -1491,6 +1496,7 @@ INITIALIZE_PASS_BEGIN(PartialInlinerLegacyPass, "partial-inliner",
 INITIALIZE_PASS_DEPENDENCY(AssumptionCacheTracker)
 INITIALIZE_PASS_DEPENDENCY(ProfileSummaryInfoWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(TargetTransformInfoWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(TargetLibraryInfoWrapperPass)
 INITIALIZE_PASS_END(PartialInlinerLegacyPass, "partial-inliner",
                     "Partial Inliner", false, false)
 
@@ -1524,7 +1530,9 @@ PreservedAnalyses PartialInlinerPass::run(Module &M,
 
   ProfileSummaryInfo *PSI = &AM.getResult<ProfileSummaryAnalysis>(M);
 
-  if (PartialInlinerImpl(&GetAssumptionCache, &GetTTI, {GetBFI}, PSI, &GetORE)
+  auto &TLI = AM.getResult<TargetLibraryAnalysis>(M);
+
+  if (PartialInlinerImpl(&GetAssumptionCache, &GetTTI, {GetBFI}, PSI, &GetORE, &TLI)
           .run(M))
     return PreservedAnalyses::none();
   return PreservedAnalyses::all();

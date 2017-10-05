@@ -21,6 +21,7 @@ namespace llvm {
   class Instruction;
   class DominatorTree;
   class OrderedBasicBlock;
+  class TargetLibraryInfo;
 
   /// PointerMayBeCaptured - Return true if this pointer value may be captured
   /// by the enclosing function (which is required to exist).  This routine can
@@ -31,7 +32,8 @@ namespace llvm {
   /// automatically counts as capturing it or not.
   bool PointerMayBeCaptured(const Value *V,
                             bool ReturnCaptures,
-                            bool StoreCaptures);
+                            bool StoreCaptures,
+                            const TargetLibraryInfo *TLI);
 
   /// PointerMayBeCapturedBefore - Return true if this pointer value may be
   /// captured by the enclosing function (which is required to exist). If a
@@ -46,7 +48,8 @@ namespace llvm {
   /// to speed up capture-tracker queries.
   bool PointerMayBeCapturedBefore(const Value *V, bool ReturnCaptures,
                                   bool StoreCaptures, const Instruction *I,
-                                  DominatorTree *DT, bool IncludeI = false,
+                                  DominatorTree *DT, const TargetLibraryInfo *TLI,
+                                  bool IncludeI = false,
                                   OrderedBasicBlock *OBB = nullptr);
 
   /// This callback is used in conjunction with PointerMayBeCaptured. In
@@ -75,7 +78,8 @@ namespace llvm {
   /// PointerMayBeCaptured - Visit the value and the values derived from it and
   /// find values which appear to be capturing the pointer value. This feeds
   /// results into and is controlled by the CaptureTracker object.
-  void PointerMayBeCaptured(const Value *V, CaptureTracker *Tracker);
+  void PointerMayBeCaptured(const Value *V, CaptureTracker *Tracker,
+                            const TargetLibraryInfo *TLI);
 } // end namespace llvm
 
 #endif
