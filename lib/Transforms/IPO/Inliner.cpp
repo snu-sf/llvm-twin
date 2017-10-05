@@ -267,7 +267,8 @@ static bool InlineCallIfPossible(
     CallSite CS, InlineFunctionInfo &IFI,
     InlinedArrayAllocasTy &InlinedArrayAllocas, int InlineHistory,
     bool InsertLifetime, function_ref<AAResults &(Function &)> &AARGetter,
-    ImportedFunctionsInliningStatistics &ImportedFunctionsStats) {
+    ImportedFunctionsInliningStatistics &ImportedFunctionsStats,
+    const TargetLibraryInfo *TLI) {
   Function *Callee = CS.getCalledFunction();
   Function *Caller = CS.getCaller();
 
@@ -275,7 +276,7 @@ static bool InlineCallIfPossible(
 
   // Try to inline the function.  Get the list of static allocas that were
   // inlined.
-  if (!InlineFunction(CS, IFI, &AAR, InsertLifetime))
+  if (!InlineFunction(CS, IFI, &AAR, InsertLifetime, TLI))
     return false;
 
   if (InlinerFunctionImportStats != InlinerFunctionImportStatsOpts::No)
@@ -608,7 +609,7 @@ inlineCallsImpl(CallGraphSCC &SCC, CallGraph &CG,
 
         if (!InlineCallIfPossible(CS, InlineInfo, InlinedArrayAllocas,
                                   InlineHistoryID, InsertLifetime, AARGetter,
-                                  ImportedFunctionsStats)) {
+                                  ImportedFunctionsStats, &TLI)) {
           ORE.emit([&]() {
             return OptimizationRemarkMissed(DEBUG_TYPE, "NotInlined", DLoc,
                                             Block)

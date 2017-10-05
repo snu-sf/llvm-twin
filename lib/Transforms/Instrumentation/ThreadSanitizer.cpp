@@ -101,7 +101,8 @@ struct ThreadSanitizer : public FunctionPass {
   bool instrumentMemIntrinsic(Instruction *I);
   void chooseInstructionsToInstrument(SmallVectorImpl<Instruction *> &Local,
                                       SmallVectorImpl<Instruction *> &All,
-                                      const DataLayout &DL);
+                                      const DataLayout &DL,
+                                      const TargetLibraryInfo *TLI);
   bool addrPointsToConstantData(Value *Addr);
   int getMemoryAccessFuncIndex(Value *Addr, const DataLayout &DL);
   void InsertRuntimeIgnores(Function &F);
@@ -338,7 +339,7 @@ bool ThreadSanitizer::addrPointsToConstantData(Value *Addr) {
 // 'All' is a vector of insns that will be instrumented.
 void ThreadSanitizer::chooseInstructionsToInstrument(
     SmallVectorImpl<Instruction *> &Local, SmallVectorImpl<Instruction *> &All,
-    const DataLayout &DL) {
+    const DataLayout &DL, const TargetLibraryInfo *TLI) {
   SmallSet<Value*, 8> WriteTargets;
   // Iterate from the end.
   for (Instruction *I : reverse(Local)) {
@@ -366,7 +367,7 @@ void ThreadSanitizer::chooseInstructionsToInstrument(
         ? cast<StoreInst>(I)->getPointerOperand()
         : cast<LoadInst>(I)->getPointerOperand();
     if (isa<AllocaInst>(GetUnderlyingObject(Addr, DL)) &&
-        !PointerMayBeCaptured(Addr, true, true)) {
+        !PointerMayBeCaptured(Addr, true, true, TLI)) {
       // The variable is addressable but not captured, so it cannot be
       // referenced from a different thread and participate in a data race
       // (see llvm/Analysis/CaptureTracking.h for details).
@@ -433,10 +434,11 @@ bool ThreadSanitizer::runOnFunction(Function &F) {
           MemIntrinCalls.push_back(&Inst);
         HasCalls = true;
         chooseInstructionsToInstrument(LocalLoadsAndStores, AllLoadsAndStores,
-                                       DL);
+                                       DL, TLI);
       }
     }
-    chooseInstructionsToInstrument(LocalLoadsAndStores, AllLoadsAndStores, DL);
+    chooseInstructionsToInstrument(LocalLoadsAndStores, AllLoadsAndStores,
+                                   DL, TLI);
   }
 
   // We have collected all loads and stores.

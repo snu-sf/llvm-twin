@@ -618,7 +618,8 @@ static bool addArgumentAttrsFromCallsites(Function &F) {
 }
 
 /// Deduce nocapture attributes for the SCC.
-static bool addArgumentAttrs(const SCCNodeSet &SCCNodes) {
+static bool addArgumentAttrs(const SCCNodeSet &SCCNodes,
+                             const TargetLibraryInfo *TLI) {
   bool Changed = false;
 
   ArgumentGraph AG;
@@ -656,7 +657,7 @@ static bool addArgumentAttrs(const SCCNodeSet &SCCNodes) {
       bool HasNonLocalUses = false;
       if (!A->hasNoCaptureAttr()) {
         ArgumentUsesTracker Tracker(SCCNodes);
-        PointerMayBeCaptured(&*A, &Tracker);
+        PointerMayBeCaptured(&*A, &Tracker, TLI);
         if (!Tracker.Captured) {
           if (Tracker.Uses.empty()) {
             // If it's trivially not captured, mark it nocapture now.
@@ -803,7 +804,8 @@ static bool addArgumentAttrs(const SCCNodeSet &SCCNodes) {
 ///
 /// A function is "malloc-like" if it returns either null or a pointer that
 /// doesn't alias any other pointer visible to the caller.
-static bool isFunctionMallocLike(Function *F, const SCCNodeSet &SCCNodes) {
+static bool isFunctionMallocLike(Function *F, const SCCNodeSet &SCCNodes,
+                                 const TargetLibraryInfo *TLI) {
   SmallSetVector<Value *, 8> FlowsToReturn;
   for (BasicBlock &BB : *F)
     if (ReturnInst *Ret = dyn_cast<ReturnInst>(BB.getTerminator()))
@@ -859,7 +861,7 @@ static bool isFunctionMallocLike(Function *F, const SCCNodeSet &SCCNodes) {
         return false; // Did not come from an allocation.
       }
 
-    if (PointerMayBeCaptured(RetVal, false, /*StoreCaptures=*/false))
+    if (PointerMayBeCaptured(RetVal, false, /*StoreCaptures=*/false, TLI))
       return false;
   }
 
@@ -867,7 +869,8 @@ static bool isFunctionMallocLike(Function *F, const SCCNodeSet &SCCNodes) {
 }
 
 /// Deduce noalias attributes for the SCC.
-static bool addNoAliasAttrs(const SCCNodeSet &SCCNodes) {
+static bool addNoAliasAttrs(const SCCNodeSet &SCCNodes,
+                            const TargetLibraryInfo *TLI) {
   // Check each function in turn, determining which functions return noalias
   // pointers.
   for (Function *F : SCCNodes) {
@@ -886,7 +889,7 @@ static bool addNoAliasAttrs(const SCCNodeSet &SCCNodes) {
     if (!F->getReturnType()->isPointerTy())
       continue;
 
-    if (!isFunctionMallocLike(F, SCCNodes))
+    if (!isFunctionMallocLike(F, SCCNodes, TLI))
       return false;
   }
 
@@ -1122,12 +1125,12 @@ PreservedAnalyses PostOrderFunctionAttrsPass::run(LazyCallGraph::SCC &C,
                                                   CGSCCUpdateResult &) {
   FunctionAnalysisManager &FAM =
       AM.getResult<FunctionAnalysisManagerCGSCCProxy>(C, CG).getManager();
-
   // We pass a lambda into functions to wire them up to the analysis manager
   // for getting function analyses.
   auto AARGetter = [&](Function &F) -> AAResults & {
     return FAM.getResult<AAManager>(F);
   };
+  TargetLibraryInfo *TLI = nullptr;
 
   // Fill SCCNodes with the elements of the SCC. Also track whether there are
   // any external or opt-none nodes that will prevent us from optimizing any
@@ -1155,17 +1158,19 @@ PreservedAnalyses PostOrderFunctionAttrsPass::run(LazyCallGraph::SCC &C,
           }
 
     SCCNodes.insert(&F);
+    if (!TLI)
+      TLI = &FAM.getResult<TargetLibraryAnalysis>(F);
   }
 
   bool Changed = false;
   Changed |= addArgumentReturnedAttrs(SCCNodes);
   Changed |= addReadAttrs(SCCNodes, AARGetter);
-  Changed |= addArgumentAttrs(SCCNodes);
+  Changed |= addArgumentAttrs(SCCNodes, TLI);
 
   // If we have no external nodes participating in the SCC, we can deduce some
   // more precise attributes as well.
   if (!HasUnknownCall) {
-    Changed |= addNoAliasAttrs(SCCNodes);
+    Changed |= addNoAliasAttrs(SCCNodes, TLI);
     Changed |= addNonNullAttrs(SCCNodes);
     Changed |= removeConvergentAttrs(SCCNodes);
     Changed |= addNoRecurseAttrs(SCCNodes);
@@ -1190,6 +1195,7 @@ struct PostOrderFunctionAttrsLegacyPass : public CallGraphSCCPass {
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.setPreservesCFG();
     AU.addRequired<AssumptionCacheTracker>();
+    AU.addRequired<TargetLibraryInfoWrapperPass>();
     getAAResultsAnalysisUsage(AU);
     CallGraphSCCPass::getAnalysisUsage(AU);
   }
@@ -1201,6 +1207,7 @@ char PostOrderFunctionAttrsLegacyPass::ID = 0;
 INITIALIZE_PASS_BEGIN(PostOrderFunctionAttrsLegacyPass, "functionattrs",
                       "Deduce function attributes", false, false)
 INITIALIZE_PASS_DEPENDENCY(AssumptionCacheTracker)
+INITIALIZE_PASS_DEPENDENCY(TargetLibraryInfoWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(CallGraphWrapperPass)
 INITIALIZE_PASS_END(PostOrderFunctionAttrsLegacyPass, "functionattrs",
                     "Deduce function attributes", false, false)
@@ -1210,7 +1217,8 @@ Pass *llvm::createPostOrderFunctionAttrsLegacyPass() {
 }
 
 template <typename AARGetterT>
-static bool runImpl(CallGraphSCC &SCC, AARGetterT AARGetter) {
+static bool runImpl(CallGraphSCC &SCC, AARGetterT AARGetter,
+                    const TargetLibraryInfo *TLI) {
   bool Changed = false;
 
   // Fill SCCNodes with the elements of the SCC. Used for quickly looking up
@@ -1237,12 +1245,12 @@ static bool runImpl(CallGraphSCC &SCC, AARGetterT AARGetter) {
 
   Changed |= addArgumentReturnedAttrs(SCCNodes);
   Changed |= addReadAttrs(SCCNodes, AARGetter);
-  Changed |= addArgumentAttrs(SCCNodes);
+  Changed |= addArgumentAttrs(SCCNodes, TLI);
 
   // If we have no external nodes participating in the SCC, we can deduce some
   // more precise attributes as well.
   if (!ExternalNode) {
-    Changed |= addNoAliasAttrs(SCCNodes);
+    Changed |= addNoAliasAttrs(SCCNodes, TLI);
     Changed |= addNonNullAttrs(SCCNodes);
     Changed |= removeConvergentAttrs(SCCNodes);
     Changed |= addNoRecurseAttrs(SCCNodes);
@@ -1254,7 +1262,10 @@ static bool runImpl(CallGraphSCC &SCC, AARGetterT AARGetter) {
 bool PostOrderFunctionAttrsLegacyPass::runOnSCC(CallGraphSCC &SCC) {
   if (skipSCC(SCC))
     return false;
-  return runImpl(SCC, LegacyAARGetter(*this));
+
+  auto &TLI = getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
+
+  return runImpl(SCC, LegacyAARGetter(*this), &TLI);
 }
 
 namespace {
