@@ -106,7 +106,8 @@ bool BasicAAResult::invalidate(Function &F, const PreservedAnalyses &PA,
 
 /// Returns true if the pointer is to a function-local object that never
 /// escapes from the function.
-static bool isNonEscapingLocalObject(const Value *V) {
+static bool isNonEscapingLocalObject(const Value *V,
+                                     const TargetLibraryInfo *TLI) {
   // If this is a local allocation, check to see if it escapes.
   if (isa<AllocaInst>(V) || isNoAliasCall(V))
     // Set StoreCaptures to True so that we can assume in our callers that the
@@ -114,7 +115,7 @@ static bool isNonEscapingLocalObject(const Value *V) {
     // PointerMayBeCaptured doesn't have any special analysis for the
     // StoreCaptures=false case; if it did, our callers could be refined to be
     // more precise.
-    return !PointerMayBeCaptured(V, false, /*StoreCaptures=*/true);
+    return !PointerMayBeCaptured(V, false, /*StoreCaptures=*/true, TLI);
 
   // If this is an argument that corresponds to a byval or noalias argument,
   // then it has not escaped before entering the function.  Check if it escapes
@@ -124,7 +125,7 @@ static bool isNonEscapingLocalObject(const Value *V) {
       // Note even if the argument is marked nocapture, we still need to check
       // for copies made inside the function. The nocapture attribute only
       // specifies that there are no copies made that outlive the function.
-      return !PointerMayBeCaptured(V, false, /*StoreCaptures=*/true);
+      return !PointerMayBeCaptured(V, false, /*StoreCaptures=*/true, TLI);
 
   return false;
 }
@@ -776,7 +777,7 @@ ModRefInfo BasicAAResult::getModRefInfo(ImmutableCallSite CS,
   // then the call can not mod/ref the pointer unless the call takes the pointer
   // as an argument, and itself doesn't capture it.
   if (!isa<Constant>(Object) && CS.getInstruction() != Object &&
-      isNonEscapingLocalObject(Object)) {
+      isNonEscapingLocalObject(Object, &TLI)) {
 
     // Optimistically assume that call doesn't touch Object and check this
     // assumption in the following loop.
@@ -1605,9 +1606,9 @@ AliasResult BasicAAResult::aliasCheck(const Value *V1, uint64_t V1Size,
       return NoAlias;
 
     // Constant pointers can't alias with non-const isIdentifiedObject objects.
-    if ((isa<Constant>(O1) && isNonEscapingLocalObject(O2) &&
+    if ((isa<Constant>(O1) && isNonEscapingLocalObject(O2, &TLI) &&
          !isa<Constant>(O2)) ||
-        (isa<Constant>(O2) && isNonEscapingLocalObject(O1) &&
+        (isa<Constant>(O2) && isNonEscapingLocalObject(O1, &TLI) &&
          !isa<Constant>(O1)))
       return NoAlias;
 
@@ -1626,9 +1627,9 @@ AliasResult BasicAAResult::aliasCheck(const Value *V1, uint64_t V1Size,
     // temporary store the nocapture argument's value in a temporary memory
     // location if that memory location doesn't escape. Or it may pass a
     // nocapture value to other functions as long as they don't capture it.
-    if (isEscapeSource(O1) && isNonEscapingLocalObject(O2))
+    if (isEscapeSource(O1) && isNonEscapingLocalObject(O2, &TLI))
       return NoAlias;
-    if (isEscapeSource(O2) && isNonEscapingLocalObject(O1))
+    if (isEscapeSource(O2) && isNonEscapingLocalObject(O1, &TLI))
       return NoAlias;
   }
 

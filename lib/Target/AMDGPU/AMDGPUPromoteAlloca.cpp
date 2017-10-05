@@ -537,7 +537,7 @@ bool AMDGPUPromoteAlloca::collectUsesWithPtrTypes(
 
     if (UseInst->getOpcode() == Instruction::AddrSpaceCast) {
       // Give up if the pointer may be captured.
-      if (PointerMayBeCaptured(UseInst, true, true))
+      if (PointerMayBeCaptured(UseInst, true, true, nullptr))
         return false;
       // Don't collect the users of this.
       WorkList.push_back(User);
