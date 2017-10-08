@@ -14,6 +14,8 @@
 #ifndef LLVM_ANALYSIS_CAPTURETRACKING_H
 #define LLVM_ANALYSIS_CAPTURETRACKING_H
 
+#include <functional>
+
 namespace llvm {
 
   class Value;
@@ -50,7 +52,8 @@ namespace llvm {
                                   bool StoreCaptures, const Instruction *I,
                                   DominatorTree *DT, const TargetLibraryInfo *TLI,
                                   bool IncludeI = false,
-                                  OrderedBasicBlock *OBB = nullptr);
+                                  OrderedBasicBlock *OBB = nullptr,
+                                  std::function<void(const Use*)> CallbackFunc = nullptr);
 
   /// This callback is used in conjunction with PointerMayBeCaptured. In
   /// addition to the interface here, you'll need to provide your own getters
@@ -79,7 +82,8 @@ namespace llvm {
   /// find values which appear to be capturing the pointer value. This feeds
   /// results into and is controlled by the CaptureTracker object.
   void PointerMayBeCaptured(const Value *V, CaptureTracker *Tracker,
-                            const TargetLibraryInfo *TLI);
+                            const TargetLibraryInfo *TLI,
+                            std::function<void(const Use*)> CallbackFunc = nullptr);
 } // end namespace llvm
 
 #endif
