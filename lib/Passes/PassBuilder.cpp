@@ -90,6 +90,7 @@
 #include "llvm/Transforms/Scalar/AlignmentFromAssumptions.h"
 #include "llvm/Transforms/Scalar/BDCE.h"
 #include "llvm/Transforms/Scalar/CallSiteSplitting.h"
+#include "llvm/Transforms/Scalar/CanonicalizeTypeToI8Ptr.h"
 #include "llvm/Transforms/Scalar/ConstantHoisting.h"
 #include "llvm/Transforms/Scalar/CorrelatedValuePropagation.h"
 #include "llvm/Transforms/Scalar/DCE.h"
@@ -764,6 +765,11 @@ PassBuilder::buildModuleOptimizationPipeline(OptimizationLevel Level,
                                      convertSwitchToLookupTable(true).
                                      needCanonicalLoops(false).
                                      sinkCommonInsts(true)));
+
+  // Canonicalize load i64 / load ty* instructions to load i8* (and
+  // store i64 / store ty* to store i8*). This helps SLPVectorizer to
+  // analyze memory accesses better.
+  OptimizePM.addPass(CanonicalizeTypeToI8PtrPass());
 
   // Optimize parallel scalar instruction chains into SIMD instructions.
   OptimizePM.addPass(SLPVectorizerPass());
