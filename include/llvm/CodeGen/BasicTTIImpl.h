@@ -1039,6 +1039,14 @@ public:
     case Intrinsic::masked_load:
       return static_cast<T *>(this)
           ->getMaskedMemoryOpCost(Instruction::Load, RetTy, 0, 0);
+    case Intrinsic::psub: {
+      // Two ptrtoints followed by sub.
+      unsigned p2i_cost = static_cast<T *>(this)
+          ->getOperationCost(Instruction::PtrToInt, Tys[0], RetTy);
+      unsigned sub_cost = static_cast<T *>(this)
+          ->getOperationCost(Instruction::Sub, RetTy, RetTy);
+      return p2i_cost * 2 + sub_cost;
+    }
     case Intrinsic::ctpop:
       ISDs.push_back(ISD::CTPOP);
       // In case of legalization use TCC_Expensive. This is cheaper than a
