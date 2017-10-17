@@ -15,6 +15,7 @@
 
 #include "llvm/Transforms/Scalar/CanonicalizeTypeToI8Ptr.h"
 #include "llvm/ADT/MapVector.h"
+#include "llvm/Analysis/GlobalsModRef.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Instructions.h"
@@ -235,8 +236,13 @@ static bool canonicalize(Function &F) {
 }
 
 PreservedAnalyses CanonicalizeTypeToI8PtrPass::run(Function &F, FunctionAnalysisManager &FAM) {
-  canonicalize(F);
-  return PreservedAnalyses::all();
+  if (!canonicalize(F))
+    return PreservedAnalyses::all();
+
+  PreservedAnalyses PA;
+  PA.preserveSet<CFGAnalyses>();
+  PA.preserve<GlobalsAA>();
+  return PA;
 }
 
 namespace {
@@ -245,6 +251,13 @@ public:
   static char ID;
   CanonicalizeTypeToI8Ptr() : FunctionPass(ID) {
     initializeCanonicalizeTypeToI8PtrPass(*PassRegistry::getPassRegistry());
+  }
+
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
+    AU.setPreservesCFG();
+    AU.addPreserved<DominatorTreeWrapperPass>();
+    AU.addPreserved<GlobalsAAWrapperPass>();
+    FunctionPass::getAnalysisUsage(AU);
   }
 
   bool runOnFunction(Function &F) override {
