@@ -134,6 +134,9 @@ struct CodeGenIntrinsic {
   // True if the intrinsic is marked as speculatable.
   bool isSpeculatable;
 
+  // True if the intrinsic is marked as norecurse.
+  bool isNoRecurse;
+
   enum ArgAttribute { NoCapture, Returned, ReadOnly, WriteOnly, ReadNone };
   std::vector<std::pair<unsigned, ArgAttribute>> ArgumentAttributes;
 

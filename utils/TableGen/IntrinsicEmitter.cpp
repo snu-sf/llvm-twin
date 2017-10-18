@@ -485,7 +485,7 @@ struct AttributeComparator {
     if (L->isNoReturn != R->isNoReturn)
       return R->isNoReturn;
 
-    if (L->isConvergent != R->isConvergent)
+   if (L->isConvergent != R->isConvergent)
       return R->isConvergent;
 
     if (L->isSpeculatable != R->isSpeculatable)
@@ -494,7 +494,10 @@ struct AttributeComparator {
     if (L->hasSideEffects != R->hasSideEffects)
       return R->hasSideEffects;
 
-    // Try to order by readonly/readnone attribute.
+    if (L->isNoRecurse != R->isNoRecurse)
+      return R->isNoRecurse;
+
+     // Try to order by readonly/readnone attribute.
     CodeGenIntrinsic::ModRefBehavior LK = L->ModRef;
     CodeGenIntrinsic::ModRefBehavior RK = R->ModRef;
     if (LK != RK) return (LK > RK);
@@ -619,7 +622,8 @@ void IntrinsicEmitter::EmitAttributes(const CodeGenIntrinsicTable &Ints,
     if (!intrinsic.canThrow ||
         intrinsic.ModRef != CodeGenIntrinsic::ReadWriteMem ||
         intrinsic.isNoReturn || intrinsic.isNoDuplicate ||
-        intrinsic.isConvergent || intrinsic.isSpeculatable) {
+        intrinsic.isConvergent || intrinsic.isSpeculatable ||
+        intrinsic.isNoRecurse) {
       OS << "      const Attribute::AttrKind Atts[] = {";
       bool addComma = false;
       if (!intrinsic.canThrow) {
@@ -648,6 +652,12 @@ void IntrinsicEmitter::EmitAttributes(const CodeGenIntrinsicTable &Ints,
         if (addComma)
           OS << ",";
         OS << "Attribute::Speculatable";
+        addComma = true;
+      }
+      if (intrinsic.isNoRecurse) {
+        if (addComma)
+          OS << ",";
+        OS << "Attribute::NoRecurse";
         addComma = true;
       }
 
