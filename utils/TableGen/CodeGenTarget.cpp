@@ -523,6 +523,7 @@ CodeGenIntrinsic::CodeGenIntrinsic(Record *R) {
   isConvergent = false;
   isSpeculatable = false;
   hasSideEffects = false;
+  isNoRecurse = false;
 
   if (DefName.size() <= 4 ||
       std::string(DefName.begin(), DefName.begin() + 4) != "int_")
@@ -665,6 +666,8 @@ CodeGenIntrinsic::CodeGenIntrinsic(Record *R) {
       isSpeculatable = true;
     else if (Property->getName() == "IntrHasSideEffects")
       hasSideEffects = true;
+    else if (Property->getName() == "InstrNoRecurse")
+      isNoRecurse = true;
     else if (Property->isSubClassOf("NoCapture")) {
       unsigned ArgNo = Property->getValueAsInt("ArgNo");
       ArgumentAttributes.push_back(std::make_pair(ArgNo, NoCapture));
