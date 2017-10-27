@@ -1296,17 +1296,17 @@ Constant *llvm::ConstantFoldCastOperand(unsigned Opcode, Constant *C,
     // This requires knowing the width of a pointer, so it can't be done in
     // ConstantExpr::getCast.
     if (auto *CE = dyn_cast<ConstantExpr>(C)) {
-      if (CE->getOpcode() == Instruction::PtrToInt) {
-        Constant *SrcPtr = CE->getOperand(0);
-        unsigned SrcPtrSize = DL.getPointerTypeSizeInBits(SrcPtr->getType());
-        unsigned MidIntSize = CE->getType()->getScalarSizeInBits();
+      //if (CE->getOpcode() == Instruction::PtrToInt) {
+      //  Constant *SrcPtr = CE->getOperand(0);
+      //  unsigned SrcPtrSize = DL.getPointerTypeSizeInBits(SrcPtr->getType());
+      //  unsigned MidIntSize = CE->getType()->getScalarSizeInBits();
 
-        if (MidIntSize >= SrcPtrSize) {
-          unsigned SrcAS = SrcPtr->getType()->getPointerAddressSpace();
-          if (SrcAS == DestTy->getPointerAddressSpace())
-            return FoldBitCast(CE->getOperand(0), DestTy, DL);
-        }
-      }
+      //  if (MidIntSize >= SrcPtrSize) {
+      //    unsigned SrcAS = SrcPtr->getType()->getPointerAddressSpace();
+      //    if (SrcAS == DestTy->getPointerAddressSpace())
+      //      return FoldBitCast(CE->getOperand(0), DestTy, DL);
+      //  }
+      //}
     }
 
     return ConstantExpr::getCast(Opcode, C, DestTy);
