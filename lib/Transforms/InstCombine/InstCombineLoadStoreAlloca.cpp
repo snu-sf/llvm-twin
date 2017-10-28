@@ -986,7 +986,8 @@ static bool canSimplifyNullStoreOrGEP(StoreInst &SI) {
 static bool canSimplifyNullLoadOrGEP(LoadInst &LI, Value *Op) {
   if (GetElementPtrInst *GEPI = dyn_cast<GetElementPtrInst>(Op)) {
     const Value *GEPI0 = GEPI->getOperand(0);
-    if (isa<ConstantPointerNull>(GEPI0) && GEPI->getPointerAddressSpace() == 0)
+    if (isa<ConstantPointerNull>(GEPI0) && GEPI->getPointerAddressSpace() == 0
+        && GEPI->isInBounds())
       return true;
   }
   if (isa<UndefValue>(Op) ||

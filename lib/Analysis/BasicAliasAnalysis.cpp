@@ -955,6 +955,12 @@ ModRefInfo BasicAAResult::getModRefInfo(ImmutableCallSite CS1,
   return AAResultBase::getModRefInfo(CS1, CS2);
 }
 
+static bool isStrippedPointerInBounds(const Value *V) {
+  const Value *V2 = V->stripPointerCasts();
+  const GEPOperator *Op = dyn_cast<GEPOperator>(V2);
+  return Op && Op->isInBounds();
+}
+
 /// Provide ad-hoc rules to disambiguate accesses through two GEP operators,
 /// both having the exact same pointer operand.
 static AliasResult aliasSameBasePointerGEPs(const GEPOperator *GEP1,
@@ -1585,10 +1591,12 @@ AliasResult BasicAAResult::aliasCheck(const Value *V1, uint64_t V1Size,
   // Null values in the default address space don't point to any object, so they
   // don't alias any other pointer.
   if (const ConstantPointerNull *CPN = dyn_cast<ConstantPointerNull>(O1))
-    if (CPN->getType()->getAddressSpace() == 0)
+    if (CPN->getType()->getAddressSpace() == 0 &&
+        (isStrippedPointerInBounds(V1) || V1 == O1))
       return NoAlias;
   if (const ConstantPointerNull *CPN = dyn_cast<ConstantPointerNull>(O2))
-    if (CPN->getType()->getAddressSpace() == 0)
+    if (CPN->getType()->getAddressSpace() == 0 &&
+        (isStrippedPointerInBounds(V2) || V2 == O2))
       return NoAlias;
 
   if (O1 != O2) {
