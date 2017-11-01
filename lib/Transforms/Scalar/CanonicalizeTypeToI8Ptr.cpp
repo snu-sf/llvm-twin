@@ -183,6 +183,9 @@ static bool canonicalizeLoadInst(LoadInst &LI) {
       Ty->getIntegerBitWidth() != DL.getPointerSizeInBits(0))
     // Cannot canonicalize this load.
     return false;
+  if (PointerType *PT = dyn_cast<PointerType>(Ty))
+    if (PT->getAddressSpace() != 0)
+      return false;
   if (!Ty->isPointerTy() && !Ty->isIntegerTy())
     // Do not canonicalize this load.
     return false;
