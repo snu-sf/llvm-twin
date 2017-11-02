@@ -2037,8 +2037,8 @@ static bool isNeverEqualToUnescapedAlloc(Value *V, const TargetLibraryInfo *TLI,
                                          Instruction *AI) {
   if (isa<ConstantPointerNull>(V))
     return true;
-  if (auto *LI = dyn_cast<LoadInst>(V))
-    return isa<GlobalVariable>(LI->getPointerOperand());
+  //if (auto *LI = dyn_cast<LoadInst>(V))
+  //  return isa<GlobalVariable>(LI->getPointerOperand());
   // Two distinct allocations will never be equal.
   // We rely on LookThroughBitCast in isAllocLikeFn being false, since looking
   // through bitcasts of V can cause
