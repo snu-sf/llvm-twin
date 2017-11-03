@@ -269,7 +269,7 @@ void llvm::PointerMayBeCaptured(const Value *V, CaptureTracker *Tracker,
             AddrToCheck = II->getArgOperand(0);
           else
             llvm_unreachable("at least one of argument should be Addr");
-          unsigned Depth = 4;
+          unsigned Depth = 6;
           if (isGuaranteedToBeLogicalPointer(AddrToCheck, DL, nullptr,
                                              TLI, Depth))
             break;
