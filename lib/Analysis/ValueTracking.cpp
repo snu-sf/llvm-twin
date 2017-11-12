@@ -3385,20 +3385,21 @@ static bool isSameUnderlyingObjectInLoop(const PHINode *PN,
 
 Value *llvm::GetUnderlyingObject(Value *V, const DataLayout &DL,
                                  unsigned MaxLookup,
-                                 bool TrackInBoundsNonnegOfsOnly) {
+                                 bool TrackInBoundsPositiveOfsOnly) {
   if (!V->getType()->isPointerTy())
     return V;
   auto psize = DL.getPointerSizeInBits(V->getType()->getPointerAddressSpace());
   for (unsigned Count = 0; MaxLookup == 0 || Count < MaxLookup; ++Count) {
     if (GEPOperator *GEP = dyn_cast<GEPOperator>(V)) {
-      if (TrackInBoundsNonnegOfsOnly) {
+      if (TrackInBoundsPositiveOfsOnly) {
         if (!GEP->isInBounds())
           // GEP without inbounds is not allowed.
           return V;
         APInt Ofs(psize, 0);
-        bool hasNonNegativeOffset = GEP->accumulateConstantOffset(DL, Ofs) &&
-                                    Ofs.isNonNegative();
-        if (!hasNonNegativeOffset)
+        bool hasPositiveOffset = GEP->accumulateConstantOffset(DL, Ofs) &&
+                                 Ofs.isNonNegative() &&
+                                 !Ofs.isNullValue();
+        if (!hasPositiveOffset)
           return V;
       }
       V = GEP->getPointerOperand();
@@ -3437,13 +3438,13 @@ Value *llvm::GetUnderlyingObject(Value *V, const DataLayout &DL,
 void llvm::GetUnderlyingObjects(Value *V, SmallVectorImpl<Value *> &Objects,
                                 const DataLayout &DL, LoopInfo *LI,
                                 unsigned MaxLookup,
-                                bool TrackInBoundsNonnegOfsOnly) {
+                                bool TrackInBoundsPositiveOfsOnly) {
   SmallPtrSet<Value *, 4> Visited;
   SmallVector<Value *, 4> Worklist;
   Worklist.push_back(V);
   do {
     Value *P = Worklist.pop_back_val();
-    P = GetUnderlyingObject(P, DL, MaxLookup, TrackInBoundsNonnegOfsOnly);
+    P = GetUnderlyingObject(P, DL, MaxLookup, TrackInBoundsPositiveOfsOnly);
 
     if (!Visited.insert(P).second)
       continue;
