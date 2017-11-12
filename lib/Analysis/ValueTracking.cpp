@@ -3384,11 +3384,23 @@ static bool isSameUnderlyingObjectInLoop(const PHINode *PN,
 }
 
 Value *llvm::GetUnderlyingObject(Value *V, const DataLayout &DL,
-                                 unsigned MaxLookup) {
+                                 unsigned MaxLookup,
+                                 bool TrackInBoundsNonnegOfsOnly) {
   if (!V->getType()->isPointerTy())
     return V;
+  auto psize = DL.getPointerSizeInBits(V->getType()->getPointerAddressSpace());
   for (unsigned Count = 0; MaxLookup == 0 || Count < MaxLookup; ++Count) {
     if (GEPOperator *GEP = dyn_cast<GEPOperator>(V)) {
+      if (TrackInBoundsNonnegOfsOnly) {
+        if (!GEP->isInBounds())
+          // GEP without inbounds is not allowed.
+          return V;
+        APInt Ofs(psize, 0);
+        bool hasNonNegativeOffset = GEP->accumulateConstantOffset(DL, Ofs) &&
+                                    Ofs.isNonNegative();
+        if (!hasNonNegativeOffset)
+          return V;
+      }
       V = GEP->getPointerOperand();
     } else if (Operator::getOpcode(V) == Instruction::BitCast ||
                Operator::getOpcode(V) == Instruction::AddrSpaceCast) {
@@ -3424,13 +3436,14 @@ Value *llvm::GetUnderlyingObject(Value *V, const DataLayout &DL,
 
 void llvm::GetUnderlyingObjects(Value *V, SmallVectorImpl<Value *> &Objects,
                                 const DataLayout &DL, LoopInfo *LI,
-                                unsigned MaxLookup) {
+                                unsigned MaxLookup,
+                                bool TrackInBoundsNonnegOfsOnly) {
   SmallPtrSet<Value *, 4> Visited;
   SmallVector<Value *, 4> Worklist;
   Worklist.push_back(V);
   do {
     Value *P = Worklist.pop_back_val();
-    P = GetUnderlyingObject(P, DL, MaxLookup);
+    P = GetUnderlyingObject(P, DL, MaxLookup, TrackInBoundsNonnegOfsOnly);
 
     if (!Visited.insert(P).second)
       continue;

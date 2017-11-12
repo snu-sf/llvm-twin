@@ -288,9 +288,11 @@ class Value;
   /// the MaxLookup value is non-zero, it limits the number of instructions to
   /// be stripped off.
   Value *GetUnderlyingObject(Value *V, const DataLayout &DL,
-                             unsigned MaxLookup = 6);
-  inline const Value *GetUnderlyingObject(const Value *V, const DataLayout &DL,
-                                          unsigned MaxLookup = 6) {
+                             unsigned MaxLookup = 6,
+                             bool TrackInBoundsNonnegOfsOnly = false);
+  static inline const Value *GetUnderlyingObject(const Value *V,
+                                                 const DataLayout &DL,
+                                                 unsigned MaxLookup = 6) {
     return GetUnderlyingObject(const_cast<Value *>(V), DL, MaxLookup);
   }
 
@@ -324,7 +326,8 @@ class Value;
   /// it shouldn't look through the phi above.
   void GetUnderlyingObjects(Value *V, SmallVectorImpl<Value *> &Objects,
                             const DataLayout &DL, LoopInfo *LI = nullptr,
-                            unsigned MaxLookup = 6);
+                            unsigned MaxLookup = 6,
+                            bool TrackInBoundsNonnegOfsOnly = false);
 
   /// This is a wrapper around GetUnderlyingObjects and adds support for basic
   /// ptrtoint+arithmetic+inttoptr sequences.
