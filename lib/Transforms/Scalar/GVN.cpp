@@ -32,6 +32,7 @@
 #include "llvm/Analysis/CFG.h"
 #include "llvm/Analysis/GlobalsModRef.h"
 #include "llvm/Analysis/InstructionSimplify.h"
+#include "llvm/Analysis/Loads.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/MemoryBuiltins.h"
 #include "llvm/Analysis/MemoryDependenceAnalysis.h"
@@ -1713,6 +1714,90 @@ bool GVN::replaceOperandsWithConsts(Instruction *Instr) const {
   return Changed;
 }
 
+/// Returns true if either replacing Op0 with Op1 or O1 with O0
+/// is safe, given Op0 == Op1.
+static bool isSafeToPropagatePtrEquality(Value *Op0, Value *Op1,
+                                         Instruction *CxtI,
+                                         const DataLayout &DL,
+                                         const DominatorTree *DT) {
+  // If Op0 is null pointer, it is safe to replace Op0 with Op1.
+  if (isa<ConstantPointerNull>(Op1) || isa<ConstantPointerNull>(Op0))
+    return true;
+
+  // If Op1 is inttoptr, it is safe to replace Op0 with Op1.
+  if (match(Op1, m_IntToPtr(m_Value())) || match(Op0, m_IntToPtr(m_Value())))
+    return true;
+
+  // p = gep inbounds p0, n;
+  // q = gep inbounds p0, m;
+  // if (p == q) { /* it is safe to use q instead of p */ }
+  GEPOperator *GEP0 = dyn_cast<GEPOperator>(Op0);
+  GEPOperator *GEP1 = dyn_cast<GEPOperator>(Op1);
+  if (GEP0 && GEP1 && GEP0->isInBounds() && GEP1->isInBounds() &&
+      GEP0->getPointerOperand() == GEP1->getPointerOperand())
+    return true;
+
+  SmallVector<Value *, 4> Op0Bases, Op1Bases;
+	GetUnderlyingObjects(Op0, Op0Bases, DL, nullptr, 12);
+	GetUnderlyingObjects(Op1, Op1Bases, DL, nullptr, 12);
+  auto isLogical = [](Value *V) {
+    return isa<AllocaInst>(V) ||
+           isNoAliasCall(V) ||
+           (isa<GlobalValue>(V) && !isa<GlobalAlias>(V));
+  };
+  bool isOp0BaseLogical = true, isOp1BaseLogical = true;
+  for (unsigned i = 0; i < Op0Bases.size(); i++) {
+    if (!isLogical(Op0Bases[i])) {
+      isOp0BaseLogical = false;
+      break;
+    }
+  }
+  for (unsigned i = 0; i < Op1Bases.size(); i++) {
+    if (!isLogical(Op1Bases[i])) {
+      isOp1BaseLogical = false;
+      break;
+    }
+  }
+
+  // alc = alloca
+	// p = gep alc, ..
+  // q = gep alc, ..
+  if (Op0Bases.size() == 1 && Op1Bases.size() == 1 &&
+      Op0Bases[0] == Op1Bases[0] && isOp0BaseLogical)
+    return true;
+
+  // alc = alloca
+  // alc2 = alloca
+  // store 10, alc
+  // store 20, alc2
+  if (isOp0BaseLogical && isOp1BaseLogical &&
+      isSafeToLoadUnconditionally(Op0, 0, DL, CxtI, DT) &&
+      isSafeToLoadUnconditionally(Op1, 0, DL, CxtI, DT))
+    return true;
+
+  // p = gep inbounds (gep inbounds ... (gep inbounds p0, c1), c2), cn
+  //     c1, c2, .. , cn are non-negative constants
+  // q = gep inbounds (gep inbounds ... (gep inbounds p0, c1'), c2'), cn'
+  //     c1', c2', .., cn' are non-negative constants
+  SmallVector<Value *, 4> Op0Bases2, Op1Bases2;
+  if (GEP0 && GEP1 && GEP0->isInBounds() && GEP1->isInBounds()) {
+    if (GetUnderlyingObject(Op0, DL, 12, true) ==
+        GetUnderlyingObject(Op1, DL, 12, true))
+      return true;
+    else {
+      SmallVector<Value *, 4> Op0Bases2, Op1Bases2;
+      GetUnderlyingObjects(Op0, Op0Bases2, DL, nullptr, 12, true);
+      GetUnderlyingObjects(Op1, Op1Bases2, DL, nullptr, 12, true);
+      if (Op0Bases2.size() == 1 && Op1Bases2.size() == 1 &&
+          Op0Bases2[0] == Op1Bases2[0])
+        return true;
+    }
+  }
+
+  return false;
+}
+
+
 /// The given values are known to be equal in every block
 /// dominated by 'Root'.  Exploit this, for example by replacing 'LHS' with
 /// 'RHS' everywhere in the scope.  Returns whether a change was made.
@@ -1720,6 +1805,8 @@ bool GVN::replaceOperandsWithConsts(Instruction *Instr) const {
 /// value starting from the end of Root.Start.
 bool GVN::propagateEquality(Value *LHS, Value *RHS, const BasicBlockEdge &Root,
                             bool DominatesByEdge) {
+  const DataLayout &DL = Root.getStart()->getModule()->getDataLayout();
+  Instruction *CxtI = dyn_cast<Instruction>(LHS);
   SmallVector<std::pair<Value*, Value*>, 4> Worklist;
   Worklist.push_back(std::make_pair(LHS, RHS));
   bool Changed = false;
@@ -1740,8 +1827,15 @@ bool GVN::propagateEquality(Value *LHS, Value *RHS, const BasicBlockEdge &Root,
       continue;
 
     // Prefer a constant on the right-hand side, or an Argument if no constants.
-    if (isa<Constant>(LHS) || (isa<Argument>(LHS) && !isa<Constant>(RHS)))
+    bool OrderFixed = false;
+    if (isa<Constant>(LHS) || (isa<Argument>(LHS) && !isa<Constant>(RHS))) {
+      OrderFixed = true;
       std::swap(LHS, RHS);
+    } else if (match(LHS, m_IntToPtr(m_Value()))) {
+      OrderFixed = true;
+      std::swap(LHS, RHS);
+    } else if (match(RHS, m_IntToPtr(m_Value())))
+      OrderFixed = true;
     assert((isa<Argument>(LHS) || isa<Instruction>(LHS)) && "Unexpected value!");
 
     // If there is no obvious reason to prefer the left-hand side over the
@@ -1754,7 +1848,7 @@ bool GVN::propagateEquality(Value *LHS, Value *RHS, const BasicBlockEdge &Root,
       // Move the 'oldest' value to the right-hand side, using the value number
       // as a proxy for age.
       uint32_t RVN = VN.lookupOrAdd(RHS);
-      if (LVN < RVN) {
+      if (!OrderFixed && LVN < RVN) {
         std::swap(LHS, RHS);
         LVN = RVN;
       }
@@ -1818,10 +1912,13 @@ bool GVN::propagateEquality(Value *LHS, Value *RHS, const BasicBlockEdge &Root,
 
       // If "A == B" is known true, or "A != B" is known false, then replace
       // A with B everywhere in the scope.
-      if (!Op0->getType()->isPtrOrPtrVectorTy() &&
-          ((isKnownTrue && Cmp->getPredicate() == CmpInst::ICMP_EQ) ||
-          (isKnownFalse && Cmp->getPredicate() == CmpInst::ICMP_NE)))
-        Worklist.push_back(std::make_pair(Op0, Op1));
+      if (((isKnownTrue && Cmp->getPredicate() == CmpInst::ICMP_EQ) ||
+          (isKnownFalse && Cmp->getPredicate() == CmpInst::ICMP_NE))) {
+        bool isOkay = !Op0->getType()->isPtrOrPtrVectorTy() ||
+                      isSafeToPropagatePtrEquality(Op0, Op1, CxtI, DL, DT);
+        if (isOkay)
+          Worklist.push_back(std::make_pair(Op0, Op1));
+      }
 
       // Handle the floating point versions of equality comparisons too.
       if ((isKnownTrue && Cmp->getPredicate() == CmpInst::FCMP_OEQ) ||
