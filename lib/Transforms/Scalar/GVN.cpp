@@ -1748,6 +1748,8 @@ bool GVN::propagateEquality(Value *LHS, Value *RHS, const BasicBlockEdge &Root,
     if (isa<Constant>(LHS) || (isa<Argument>(LHS) && !isa<Constant>(RHS))) {
       OrderFixed = true;
       std::swap(LHS, RHS);
+    } else if (isa<Constant>(RHS)) {
+      OrderFixed = true;
     } else if (match(LHS, m_IntToPtr(m_Value()))) {
       OrderFixed = true;
       std::swap(LHS, RHS);
