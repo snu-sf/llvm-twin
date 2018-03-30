@@ -3385,7 +3385,8 @@ static bool isSameUnderlyingObjectInLoop(const PHINode *PN,
 
 Value *llvm::GetUnderlyingObject(Value *V, const DataLayout &DL,
                                  unsigned MaxLookup,
-                                 bool TrackInBoundsPositiveOfsOnly) {
+                                 bool TrackInBoundsPositiveOfsOnly,
+                                 bool TryInstSimplify) {
   if (!V->getType()->isPointerTy())
     return V;
   auto psize = DL.getPointerSizeInBits(V->getType()->getPointerAddressSpace());
@@ -3422,11 +3423,12 @@ Value *llvm::GetUnderlyingObject(Value *V, const DataLayout &DL,
 
       // See if InstructionSimplify knows any relevant tricks.
       if (Instruction *I = dyn_cast<Instruction>(V))
-        // TODO: Acquire a DominatorTree and AssumptionCache and use them.
-        if (Value *Simplified = SimplifyInstruction(I, {DL, I})) {
-          V = Simplified;
-          continue;
-        }
+        if (TryInstSimplify)
+          // TODO: Acquire a DominatorTree and AssumptionCache and use them.
+          if (Value *Simplified = SimplifyInstruction(I, {DL, I})) {
+            V = Simplified;
+            continue;
+          }
 
       return V;
     }
@@ -3438,13 +3440,15 @@ Value *llvm::GetUnderlyingObject(Value *V, const DataLayout &DL,
 void llvm::GetUnderlyingObjects(Value *V, SmallVectorImpl<Value *> &Objects,
                                 const DataLayout &DL, LoopInfo *LI,
                                 unsigned MaxLookup,
-                                bool TrackInBoundsPositiveOfsOnly) {
+                                bool TrackInBoundsPositiveOfsOnly,
+                                bool TryInstSimplify) {
   SmallPtrSet<Value *, 4> Visited;
   SmallVector<Value *, 4> Worklist;
   Worklist.push_back(V);
   do {
     Value *P = Worklist.pop_back_val();
-    P = GetUnderlyingObject(P, DL, MaxLookup, TrackInBoundsPositiveOfsOnly);
+    P = GetUnderlyingObject(P, DL, MaxLookup, TrackInBoundsPositiveOfsOnly,
+                            TryInstSimplify);
 
     if (!Visited.insert(P).second)
       continue;
@@ -3644,7 +3648,7 @@ bool llvm::isSafeToSpeculativelyExecute(const Value *V,
 
 /// Returns true if either replacing Op0 with Op1 is safe, given Op0 == Op1.
 bool llvm::isSafeToPropagatePtrEquality(Value *Op0, Value *Op1,
-                                         Instruction *CxtI,
+                                         const Instruction *CxtI,
                                          const DataLayout &DL,
                                          const DominatorTree *DT) {
   // If Op1 is null pointer, it is safe to replace Op0 with Op1.
@@ -3665,8 +3669,8 @@ bool llvm::isSafeToPropagatePtrEquality(Value *Op0, Value *Op1,
     return true;
 
   SmallVector<Value *, 4> Op0Bases, Op1Bases;
-	GetUnderlyingObjects(Op0, Op0Bases, DL, nullptr, 12);
-	GetUnderlyingObjects(Op1, Op1Bases, DL, nullptr, 12);
+	GetUnderlyingObjects(Op0, Op0Bases, DL, nullptr, 12, false, false);
+	GetUnderlyingObjects(Op1, Op1Bases, DL, nullptr, 12, false, false);
   auto isLogical = [](Value *V) {
     return isa<AllocaInst>(V) ||
            isNoAliasCall(V) ||
@@ -3698,6 +3702,8 @@ bool llvm::isSafeToPropagatePtrEquality(Value *Op0, Value *Op1,
   // store 10, alc
   // store 20, alc2
   if (isOp0BaseLogical && isOp1BaseLogical &&
+      Op0->getType()->getPointerElementType()->isSized() &&
+      Op1->getType()->getPointerElementType()->isSized() &&
       isSafeToLoadUnconditionally(Op0, 0, DL, CxtI, DT) &&
       isSafeToLoadUnconditionally(Op1, 0, DL, CxtI, DT))
     return true;
@@ -3708,13 +3714,13 @@ bool llvm::isSafeToPropagatePtrEquality(Value *Op0, Value *Op1,
   //     c1', c2', .., cn' are non-negative constants
   SmallVector<Value *, 4> Op0Bases2, Op1Bases2;
   if (GEP0 && GEP1 && GEP0->isInBounds() && GEP1->isInBounds()) {
-    if (GetUnderlyingObject(Op0, DL, 12, true) ==
-        GetUnderlyingObject(Op1, DL, 12, true))
+    if (GetUnderlyingObject(Op0, DL, 12, true, false) ==
+        GetUnderlyingObject(Op1, DL, 12, true, false))
       return true;
     else {
       SmallVector<Value *, 4> Op0Bases2, Op1Bases2;
-      GetUnderlyingObjects(Op0, Op0Bases2, DL, nullptr, 12, true);
-      GetUnderlyingObjects(Op1, Op1Bases2, DL, nullptr, 12, true);
+      GetUnderlyingObjects(Op0, Op0Bases2, DL, nullptr, 12, true, false);
+      GetUnderlyingObjects(Op1, Op1Bases2, DL, nullptr, 12, true, false);
       if (Op0Bases2.size() == 1 && Op1Bases2.size() == 1 &&
           Op0Bases2[0] == Op1Bases2[0])
         return true;
