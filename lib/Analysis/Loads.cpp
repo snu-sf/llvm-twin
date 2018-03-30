@@ -200,7 +200,7 @@ static bool AreEquivalentAddressValues(const Value *A, const Value *B) {
 /// load from the pointer.
 bool llvm::isSafeToLoadUnconditionally(Value *V, unsigned Align,
                                        const DataLayout &DL,
-                                       Instruction *ScanFrom,
+                                       const Instruction *ScanFrom,
                                        const DominatorTree *DT) {
   // Zero alignment means that the load has the ABI alignment for the target
   if (Align == 0)
@@ -262,7 +262,7 @@ bool llvm::isSafeToLoadUnconditionally(Value *V, unsigned Align,
   // from/to.  If so, the previous load or store would have already trapped,
   // so there is no harm doing an extra load (also, CSE will later eliminate
   // the load entirely).
-  BasicBlock::iterator BBI = ScanFrom->getIterator(),
+  BasicBlock::const_iterator BBI = ScanFrom->getIterator(),
                        E = ScanFrom->getParent()->begin();
 
   // We can at least always strip pointer casts even though we can't use the
@@ -278,12 +278,12 @@ bool llvm::isSafeToLoadUnconditionally(Value *V, unsigned Align,
         !isa<DbgInfoIntrinsic>(BBI))
       return false;
 
-    Value *AccessedPtr;
+    const Value *AccessedPtr;
     unsigned AccessedAlign;
-    if (LoadInst *LI = dyn_cast<LoadInst>(BBI)) {
+    if (const LoadInst *LI = dyn_cast<LoadInst>(BBI)) {
       AccessedPtr = LI->getPointerOperand();
       AccessedAlign = LI->getAlignment();
-    } else if (StoreInst *SI = dyn_cast<StoreInst>(BBI)) {
+    } else if (const StoreInst *SI = dyn_cast<StoreInst>(BBI)) {
       AccessedPtr = SI->getPointerOperand();
       AccessedAlign = SI->getAlignment();
     } else

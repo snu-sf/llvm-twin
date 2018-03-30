@@ -58,7 +58,7 @@ bool isDereferenceableAndAlignedPointer(const Value *V, unsigned Align,
 /// the address is already accessed.
 bool isSafeToLoadUnconditionally(Value *V, unsigned Align,
                                  const DataLayout &DL,
-                                 Instruction *ScanFrom = nullptr,
+                                 const Instruction *ScanFrom = nullptr,
                                  const DominatorTree *DT = nullptr);
 
 /// The default number of maximum instructions to scan in the block, used by

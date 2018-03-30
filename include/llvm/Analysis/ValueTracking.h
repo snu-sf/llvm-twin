@@ -289,7 +289,8 @@ class Value;
   /// be stripped off.
   Value *GetUnderlyingObject(Value *V, const DataLayout &DL,
                              unsigned MaxLookup = 6,
-                             bool TrackInBoundsPositiveOfsOnly = false);
+                             bool TrackInBoundsPositiveOfsOnly = false,
+                             bool TryInstSimplify = true);
   static inline const Value *GetUnderlyingObject(const Value *V,
                                                  const DataLayout &DL,
                                                  unsigned MaxLookup = 6) {
@@ -327,7 +328,8 @@ class Value;
   void GetUnderlyingObjects(Value *V, SmallVectorImpl<Value *> &Objects,
                             const DataLayout &DL, LoopInfo *LI = nullptr,
                             unsigned MaxLookup = 6,
-                            bool TrackInBoundsPositiveOfsOnly = false);
+                            bool TrackInBoundsPositiveOfsOnly = false,
+                            bool TryInstSimplify = true);
 
   /// This is a wrapper around GetUnderlyingObjects and adds support for basic
   /// ptrtoint+arithmetic+inttoptr sequences.
@@ -366,8 +368,8 @@ class Value;
                                     const DominatorTree *DT = nullptr);
 
   /// Returns true if either replacing Op0 with Op1 is safe, given Op0 == Op1.
-  bool llvm::isSafeToPropagatePtrEquality(Value *Op0, Value *Op1,
-                                          Instruction *CxtI,
+  bool isSafeToPropagatePtrEquality(Value *Op0, Value *Op1,
+                                          const Instruction *CxtI,
                                           const DataLayout &DL,
                                           const DominatorTree *DT);
 
