@@ -774,7 +774,7 @@ bool LazyValueInfoImpl::solveBlockValuePHINode(ValueLatticeElement &BBLV,
 }
 
 static ValueLatticeElement getValueFromCondition(Value *Val, Value *Cond,
-                                                 bool isTrueDest = true);
+    const DataLayout &DL, const DominatorTree *DT, bool isTrueDest = true);
 
 // If we can determine a constraint on the value given conditions assumed by
 // the program, intersect those constraints with BBLV
@@ -791,7 +791,8 @@ void LazyValueInfoImpl::intersectAssumeOrGuardBlockValueConstantRange(
     if (!isValidAssumeForContext(I, BBI, DT))
       continue;
 
-    BBLV = intersect(BBLV, getValueFromCondition(Val, I->getArgOperand(0)));
+    BBLV = intersect(BBLV, getValueFromCondition(Val,
+                                                 I->getArgOperand(0), DL, DT));
   }
 
   // If guards are not used in the module, don't spend time looking for them
@@ -804,7 +805,7 @@ void LazyValueInfoImpl::intersectAssumeOrGuardBlockValueConstantRange(
                                    BBI->getParent()->rend())) {
     Value *Cond = nullptr;
     if (match(&I, m_Intrinsic<Intrinsic::experimental_guard>(m_Value(Cond))))
-      BBLV = intersect(BBLV, getValueFromCondition(Val, Cond));
+      BBLV = intersect(BBLV, getValueFromCondition(Val, Cond, DL, DT));
   }
 }
 
@@ -876,9 +877,9 @@ bool LazyValueInfoImpl::solveBlockValueSelect(ValueLatticeElement &BBLV,
   // TODO: We could potentially refine an overdefined true value above.
   Value *Cond = SI->getCondition();
   TrueVal = intersect(TrueVal,
-                      getValueFromCondition(SI->getTrueValue(), Cond, true));
+              getValueFromCondition(SI->getTrueValue(), Cond, DL, DT, true));
   FalseVal = intersect(FalseVal,
-                       getValueFromCondition(SI->getFalseValue(), Cond, false));
+              getValueFromCondition(SI->getFalseValue(), Cond, DL, DT, false));
 
   // Handle clamp idioms such as:
   //   %24 = constantrange<0, 17>
@@ -1046,13 +1047,15 @@ bool LazyValueInfoImpl::solveBlockValueBinaryOp(ValueLatticeElement &BBLV,
 }
 
 static ValueLatticeElement getValueFromICmpCondition(Value *Val, ICmpInst *ICI,
-                                                     bool isTrueDest) {
+    bool isTrueDest, const DataLayout &DL, const DominatorTree *DT) {
   Value *LHS = ICI->getOperand(0);
   Value *RHS = ICI->getOperand(1);
   CmpInst::Predicate Predicate = ICI->getPredicate();
 
   if (isa<Constant>(RHS)) {
-    if (ICI->isEquality() && LHS == Val && !LHS->getType()->isPtrOrPtrVectorTy()) {
+    if (ICI->isEquality() && LHS == Val &&
+        (!LHS->getType()->isPtrOrPtrVectorTy() ||
+         isSafeToPropagatePtrEquality(LHS, RHS, ICI, DL, DT))) {
       // We know that V has the RHS constant if this is a true SETEQ or
       // false SETNE.
       if (isTrueDest == (Predicate == ICmpInst::ICMP_EQ))
@@ -1110,13 +1113,15 @@ static ValueLatticeElement getValueFromICmpCondition(Value *Val, ICmpInst *ICI,
 
 static ValueLatticeElement
 getValueFromCondition(Value *Val, Value *Cond, bool isTrueDest,
-                      DenseMap<Value*, ValueLatticeElement> &Visited);
+                      DenseMap<Value*, ValueLatticeElement> &Visited,
+                      const DataLayout &DL, const DominatorTree *DT);
 
 static ValueLatticeElement
 getValueFromConditionImpl(Value *Val, Value *Cond, bool isTrueDest,
-                          DenseMap<Value*, ValueLatticeElement> &Visited) {
+                          DenseMap<Value*, ValueLatticeElement> &Visited,
+                          const DataLayout &DL, const DominatorTree *DT) {
   if (ICmpInst *ICI = dyn_cast<ICmpInst>(Cond))
-    return getValueFromICmpCondition(Val, ICI, isTrueDest);
+    return getValueFromICmpCondition(Val, ICI, isTrueDest, DL, DT);
 
   // Handle conditions in the form of (cond1 && cond2), we know that on the
   // true dest path both of the conditions hold. Similarly for conditions of
@@ -1127,28 +1132,31 @@ getValueFromConditionImpl(Value *Val, Value *Cond, bool isTrueDest,
              (!isTrueDest && BO->getOpcode() != BinaryOperator::Or))
     return ValueLatticeElement::getOverdefined();
 
-  auto RHS = getValueFromCondition(Val, BO->getOperand(0), isTrueDest, Visited);
-  auto LHS = getValueFromCondition(Val, BO->getOperand(1), isTrueDest, Visited);
+  auto RHS = getValueFromCondition(Val, BO->getOperand(0), isTrueDest, Visited,
+                                   DL, DT);
+  auto LHS = getValueFromCondition(Val, BO->getOperand(1), isTrueDest, Visited,
+                                   DL, DT);
   return intersect(RHS, LHS);
 }
 
 static ValueLatticeElement
 getValueFromCondition(Value *Val, Value *Cond, bool isTrueDest,
-                      DenseMap<Value*, ValueLatticeElement> &Visited) {
+                      DenseMap<Value*, ValueLatticeElement> &Visited,
+                      const DataLayout &DL, const DominatorTree *DT) {
   auto I = Visited.find(Cond);
   if (I != Visited.end())
     return I->second;
 
-  auto Result = getValueFromConditionImpl(Val, Cond, isTrueDest, Visited);
+  auto Result = getValueFromConditionImpl(Val, Cond, isTrueDest, Visited, DL, DT);
   Visited[Cond] = Result;
   return Result;
 }
 
 ValueLatticeElement getValueFromCondition(Value *Val, Value *Cond,
-                                          bool isTrueDest) {
+    const DataLayout &DL, const DominatorTree *DT, bool isTrueDest) {
   assert(Cond && "precondition");
   DenseMap<Value*, ValueLatticeElement> Visited;
-  return getValueFromCondition(Val, Cond, isTrueDest, Visited);
+  return getValueFromCondition(Val, Cond, isTrueDest, Visited, DL, DT);
 }
 
 // Return true if Usr has Op as an operand, otherwise false.
@@ -1200,7 +1208,8 @@ static ValueLatticeElement constantFoldUser(User *Usr, Value *Op,
 /// Val is not constrained on the edge.  Result is unspecified if return value
 /// is false.
 static bool getEdgeValueLocal(Value *Val, BasicBlock *BBFrom,
-                              BasicBlock *BBTo, ValueLatticeElement &Result) {
+                              BasicBlock *BBTo, ValueLatticeElement &Result,
+                              const DataLayout &DL, const DominatorTree *DT) {
   // TODO: Handle more complex conditionals. If (v == 0 || v2 < 1) is false, we
   // know that v != 0.
   if (BranchInst *BI = dyn_cast<BranchInst>(BBFrom->getTerminator())) {
@@ -1223,7 +1232,7 @@ static bool getEdgeValueLocal(Value *Val, BasicBlock *BBFrom,
 
       // If the condition of the branch is an equality comparison, we may be
       // able to infer the value.
-      Result = getValueFromCondition(Val, Condition, isTrueDest);
+      Result = getValueFromCondition(Val, Condition, DL, DT, isTrueDest);
       if (!Result.isOverdefined())
         return true;
 
@@ -1255,7 +1264,7 @@ static bool getEdgeValueLocal(Value *Val, BasicBlock *BBFrom,
             for (unsigned i = 0; i < Usr->getNumOperands(); ++i) {
               Value *Op = Usr->getOperand(i);
               ValueLatticeElement OpLatticeVal =
-                  getValueFromCondition(Op, Condition, isTrueDest);
+                  getValueFromCondition(Op, Condition, DL, DT, isTrueDest);
               if (Optional<APInt> OpConst = OpLatticeVal.asConstantInteger()) {
                 Result = constantFoldUser(Usr, Op, OpConst.getValue(), DL);
                 break;
@@ -1334,7 +1343,7 @@ bool LazyValueInfoImpl::getEdgeValue(Value *Val, BasicBlock *BBFrom,
   }
 
   ValueLatticeElement LocalResult;
-  if (!getEdgeValueLocal(Val, BBFrom, BBTo, LocalResult))
+  if (!getEdgeValueLocal(Val, BBFrom, BBTo, LocalResult, DL, DT))
     // If we couldn't constrain the value on the edge, LocalResult doesn't
     // provide any information.
     LocalResult = ValueLatticeElement::getOverdefined();
