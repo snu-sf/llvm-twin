@@ -1832,7 +1832,8 @@ bool GVN::propagateEquality(Value *LHS, Value *RHS, const BasicBlockEdge &Root,
       if (((isKnownTrue && Cmp->getPredicate() == CmpInst::ICMP_EQ) ||
           (isKnownFalse && Cmp->getPredicate() == CmpInst::ICMP_NE))) {
         bool isOkay = !Op0->getType()->isPtrOrPtrVectorTy() ||
-                      isSafeToPropagatePtrEquality(Op0, Op1, CxtI, DL, DT);
+                      isSafeToPropagatePtrEquality(Op0, Op1, CxtI, DL, DT) ||
+                      isSafeToPropagatePtrEquality(Op1, Op0, CxtI, DL, DT);
         if (isOkay)
           Worklist.push_back(std::make_pair(Op0, Op1));
       }
