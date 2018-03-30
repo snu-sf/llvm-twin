@@ -3642,6 +3642,88 @@ bool llvm::isSafeToSpeculativelyExecute(const Value *V,
   }
 }
 
+/// Returns true if either replacing Op0 with Op1 is safe, given Op0 == Op1.
+bool llvm::isSafeToPropagatePtrEquality(Value *Op0, Value *Op1,
+                                         Instruction *CxtI,
+                                         const DataLayout &DL,
+                                         const DominatorTree *DT) {
+  // If Op1 is null pointer, it is safe to replace Op0 with Op1.
+  if (isa<ConstantPointerNull>(Op1))
+    return true;
+
+  // If Op1 is inttoptr, it is safe to replace Op0 with Op1.
+  if (match(Op1, m_IntToPtr(m_Value())))
+    return true;
+
+  // p = gep inbounds p0, n;
+  // q = gep inbounds p0, m;
+  // if (p == q) { /* it is safe to use q instead of p */ }
+  GEPOperator *GEP0 = dyn_cast<GEPOperator>(Op0);
+  GEPOperator *GEP1 = dyn_cast<GEPOperator>(Op1);
+  if (GEP0 && GEP1 && GEP0->isInBounds() && GEP1->isInBounds() &&
+      GEP0->getPointerOperand() == GEP1->getPointerOperand())
+    return true;
+
+  SmallVector<Value *, 4> Op0Bases, Op1Bases;
+	GetUnderlyingObjects(Op0, Op0Bases, DL, nullptr, 12);
+	GetUnderlyingObjects(Op1, Op1Bases, DL, nullptr, 12);
+  auto isLogical = [](Value *V) {
+    return isa<AllocaInst>(V) ||
+           isNoAliasCall(V) ||
+           (isa<GlobalValue>(V) && !isa<GlobalAlias>(V));
+  };
+  bool isOp0BaseLogical = true, isOp1BaseLogical = true;
+  for (unsigned i = 0; i < Op0Bases.size(); i++) {
+    if (!isLogical(Op0Bases[i])) {
+      isOp0BaseLogical = false;
+      break;
+    }
+  }
+  for (unsigned i = 0; i < Op1Bases.size(); i++) {
+    if (!isLogical(Op1Bases[i])) {
+      isOp1BaseLogical = false;
+      break;
+    }
+  }
+
+  // alc = alloca
+	// p = gep alc, ..
+  // q = gep alc, ..
+  if (Op0Bases.size() == 1 && Op1Bases.size() == 1 &&
+      Op0Bases[0] == Op1Bases[0] && isOp0BaseLogical)
+    return true;
+
+  // alc = alloca
+  // alc2 = alloca
+  // store 10, alc
+  // store 20, alc2
+  if (isOp0BaseLogical && isOp1BaseLogical &&
+      isSafeToLoadUnconditionally(Op0, 0, DL, CxtI, DT) &&
+      isSafeToLoadUnconditionally(Op1, 0, DL, CxtI, DT))
+    return true;
+
+  // p = gep inbounds (gep inbounds ... (gep inbounds p0, c1), c2), cn
+  //     c1, c2, .. , cn are non-negative constants
+  // q = gep inbounds (gep inbounds ... (gep inbounds p0, c1'), c2'), cn'
+  //     c1', c2', .., cn' are non-negative constants
+  SmallVector<Value *, 4> Op0Bases2, Op1Bases2;
+  if (GEP0 && GEP1 && GEP0->isInBounds() && GEP1->isInBounds()) {
+    if (GetUnderlyingObject(Op0, DL, 12, true) ==
+        GetUnderlyingObject(Op1, DL, 12, true))
+      return true;
+    else {
+      SmallVector<Value *, 4> Op0Bases2, Op1Bases2;
+      GetUnderlyingObjects(Op0, Op0Bases2, DL, nullptr, 12, true);
+      GetUnderlyingObjects(Op1, Op1Bases2, DL, nullptr, 12, true);
+      if (Op0Bases2.size() == 1 && Op1Bases2.size() == 1 &&
+          Op0Bases2[0] == Op1Bases2[0])
+        return true;
+    }
+  }
+
+  return false;
+}
+
 bool llvm::mayBeMemoryDependent(const Instruction &I) {
   return I.mayReadOrWriteMemory() || !isSafeToSpeculativelyExecute(&I);
 }

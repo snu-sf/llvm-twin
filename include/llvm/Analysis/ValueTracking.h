@@ -365,6 +365,12 @@ class Value;
                                     const Instruction *CtxI = nullptr,
                                     const DominatorTree *DT = nullptr);
 
+  /// Returns true if either replacing Op0 with Op1 is safe, given Op0 == Op1.
+  bool llvm::isSafeToPropagatePtrEquality(Value *Op0, Value *Op1,
+                                          Instruction *CxtI,
+                                          const DataLayout &DL,
+                                          const DominatorTree *DT);
+
   /// Returns true if the result or effects of the given instructions \p I
   /// depend on or influence global memory.
   /// Memory dependence arises for example if the instruction reads from
