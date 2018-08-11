@@ -2593,6 +2593,14 @@ bool llvm::FoldBranchToCommonDest(BranchInst *BI, unsigned BonusInstThreshold) {
     // to use any other instruction, User must be an instruction between next(I)
     // and Cond.
     ++NumBonusInsts;
+    // XXX: adding psub causes slowdown in 500.perlbench_r because
+    // replacing sub(ptrtoint, ptrtoint) with psub makes NumBonusInsts
+    // 1, which causes generation of slower code.
+    // This is a temporary fix to resolve the issue, by making NumBonusInsts
+    // equivalent to the situation when sub(ptrtoint, ptrtoint) is used.
+    if (IntrinsicInst *II = dyn_cast<IntrinsicInst>(I))
+      if (II->getIntrinsicID() == Intrinsic::psub)
+        NumBonusInsts += 2;
     // Early exits once we reach the limit.
     if (NumBonusInsts > BonusInstThreshold)
       return false;
