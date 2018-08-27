@@ -14,7 +14,7 @@ entry:
 }
 
 ; CHECK-LABEL: @Shuffle(
-; CHECK: [[A:%.*]] = load i32, i32* {{.*}}@__msan_param_origin_tls,
+; CHECK: [[A:%.*]] = load i32, i32* inttoptr (i64 ptrtoint ({{.*}}@__msan_param_origin_tls to i64) to i32*)
 ; CHECK: store i32 [[A]], i32* @__msan_retval_origin_tls
 ; CHECK: ret <4 x i32>
 

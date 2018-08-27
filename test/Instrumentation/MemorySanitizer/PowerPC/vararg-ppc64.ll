@@ -77,7 +77,7 @@ define i32 @bar4() {
 }
 
 ; CHECK-LABEL: @bar4
-; CHECK: store [2 x i64] zeroinitializer, [2 x i64]* bitcast ([100 x i64]* @__msan_va_arg_tls to [2 x i64]*), align 8
+; CHECK: store [2 x i64] zeroinitializer, [2 x i64]* inttoptr (i64 ptrtoint ([100 x i64]* @__msan_va_arg_tls to i64) to [2 x i64]*), align 8
 ; CHECK: store {{.*}} 16, {{.*}} @__msan_va_arg_overflow_size_tls
 
 ; Check i128 array.
@@ -97,7 +97,7 @@ define i32 @bar6([2 x i64]* %arg) {
 }
 
 ; CHECK-LABEL: @bar6
-; CHECK: [[SHADOW:%[0-9]+]] = bitcast [2 x i64]* bitcast ([100 x i64]* @__msan_va_arg_tls to [2 x i64]*) to i8*
+; CHECK: [[SHADOW:%[0-9]+]] = bitcast [2 x i64]* inttoptr (i64 ptrtoint ([100 x i64]* @__msan_va_arg_tls to i64) to [2 x i64]*) to i8*
 ; CHECK: call void @llvm.memcpy.p0i8.p0i8.i64(i8* [[SHADOW]], i8* {{.*}}, i64 16, i32 8, i1 false)
 ; CHECK: store {{.*}} 16, {{.*}} @__msan_va_arg_overflow_size_tls
 

@@ -28,9 +28,7 @@ BB1:
 ; CHECK: ret void
 define void @indbrtest2() {
 entry:
-  %a = ptrtoint i8* blockaddress(@indbrtest2, %BB1) to i64
-  %b = inttoptr i64 %a to i8*
-  %c = bitcast i8* %b to i8*
+  %b = bitcast i8* blockaddress(@indbrtest2, %BB1) to i8*
   indirectbr i8* %b, [label %BB0, label %BB1]
 BB0:
   call void @BB0_f()

@@ -419,21 +419,6 @@ TEST(InstructionsTest, isEliminableCastPair) {
   Type* Int64Ty = Type::getInt64Ty(C);
   Type* Int64PtrTy = Type::getInt64PtrTy(C);
 
-  // Source and destination pointers have same size -> bitcast.
-  EXPECT_EQ(CastInst::isEliminableCastPair(CastInst::PtrToInt,
-                                           CastInst::IntToPtr,
-                                           Int64PtrTy, Int64Ty, Int64PtrTy,
-                                           Int32Ty, nullptr, Int32Ty),
-            CastInst::BitCast);
-
-  // Source and destination have unknown sizes, but the same address space and
-  // the intermediate int is the maximum pointer size -> bitcast
-  EXPECT_EQ(CastInst::isEliminableCastPair(CastInst::PtrToInt,
-                                           CastInst::IntToPtr,
-                                           Int64PtrTy, Int64Ty, Int64PtrTy,
-                                           nullptr, nullptr, nullptr),
-            CastInst::BitCast);
-
   // Source and destination have unknown sizes, but the same address space and
   // the intermediate int is not the maximum pointer size -> nothing
   EXPECT_EQ(CastInst::isEliminableCastPair(CastInst::PtrToInt,
