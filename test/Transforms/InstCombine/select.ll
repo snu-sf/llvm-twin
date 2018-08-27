@@ -993,7 +993,7 @@ define i1 @test60(i32 %x, i1* %y) {
 @glbl = constant i32 10
 define i32 @test61(i32* %ptr) {
 ; CHECK-LABEL: @test61(
-; CHECK-NEXT:    ret i32 10
+; CHECK:    ret i32 %C
 ;
   %A = load i32, i32* %ptr
   %B = icmp eq i32* %ptr, @glbl

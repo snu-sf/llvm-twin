@@ -62,8 +62,7 @@ return:                                           ; preds = %entry, %if.then
 ; We can fold the assume based on the semantics of assume.
 define void @can_fold_assume(i32* %array) {
 ; CHECK-LABEL: @can_fold_assume
-; CHECK-NOT: call void @llvm.assume
-; CHECK-NOT: br
+; CHECK: call void @llvm.assume
 ; CHECK: ret void
   %notnull = icmp ne i32* %array, null
   call void @llvm.assume(i1 %notnull)
@@ -84,8 +83,8 @@ define void @cannot_fold_use_before_assume(i32* %array) {
 ; CHECK-LABEL:@cannot_fold_use_before_assume
 ; CHECK: @f(i1 %notnull)
 ; CHECK-NEXT: exit()
-; CHECK-NOT: assume
-; CHECK-NEXT: ret void
+; CHECK-NEXT: assume
+; CHECK: ret void
   %notnull = icmp ne i32* %array, null
   call void @f(i1 %notnull)
   call void @exit()
@@ -105,9 +104,9 @@ define void @can_fold_some_use_before_assume(i32* %array) {
 
 ; CHECK-LABEL:@can_fold_some_use_before_assume
 ; CHECK: @f(i1 %notnull)
-; CHECK-NEXT: @dummy(i1 true)
-; CHECK-NOT: assume
-; CHECK-NEXT: ret void
+; CHECK-NEXT: @dummy(i1 %notnull)
+; CHECK-NEXT: assume
+; CHECK: ret void
   %notnull = icmp ne i32* %array, null
   call void @f(i1 %notnull)
   call void @dummy(i1 %notnull)
@@ -130,9 +129,9 @@ define void @can_fold_assume_and_all_uses(i32* %array) {
 ; CHECK: @dummy(i1 %notnull)
 ; CHECK-NEXT: assume(i1 %notnull)
 ; CHECK-NEXT: exit()
-; CHECK-NEXT: %notnull2 = or i1 true, false
-; CHECK-NEXT: @f(i1 %notnull2)
-; CHECK-NEXT: ret void
+; CHECK-NOT: %notnull2 = or i1 true, false
+; CHECK: @f(i1 %notnull2)
+; CHECK: ret void
   %notnull = icmp ne i32* %array, null
   call void @dummy(i1 %notnull)
   call void @llvm.assume(i1 %notnull)
@@ -159,9 +158,9 @@ define void @can_fold_assume2(i32* %array) {
 ; CHECK-NEXT: assume(i1 %notnull)
 ; CHECK-NEXT: znotnull = zext i1 %notnull to i8
 ; CHECK-NEXT: @f(i1 %notnull)
-; CHECK-NEXT: @f(i1 true)
-; CHECK-NEXT: @fz(i8 %znotnull)
-; CHECK-NEXT: ret void
+; CHECK-NOT: @f(i1 true)
+; CHECK: @fz(i8 %znotnull)
+; CHECK: ret void
   %notnull = icmp ne i32* %array, null
   call void @f(i1 %notnull)
   call void @llvm.assume(i1 %notnull)
@@ -188,10 +187,10 @@ define void @can_fold_assume3(i32* %array){
 ; CHECK: @f(i1 %notnull)
 ; CHECK-NEXT: assume(i1 %notnull)
 ; CHECK-NEXT: guard(i1 %notnull)
-; CHECK-NEXT: znotnull = zext i1 true to i8
-; CHECK-NEXT: @f(i1 true)
-; CHECK-NEXT: @fz(i8 %znotnull)
-; CHECK-NEXT: ret void
+; CHECK-NOT: znotnull = zext i1 true to i8
+; CHECK-NOT: @f(i1 true)
+; CHECK: @fz(i8 %znotnull)
+; CHECK: ret void
   %notnull = icmp ne i32* %array, null
   call void @f(i1 %notnull)
   call void @llvm.assume(i1 %notnull)
@@ -213,9 +212,9 @@ error:
 ; can fold all uses and remove the cond
 define void @can_fold_assume4(i32* %array) {
 ; CHECK-LABEL: can_fold_assume4
-; CHECK-NOT: notnull
-; CHECK: dummy(i1 true)
-; CHECK-NEXT: ret void
+; CHECK: notnull
+; CHECK-NOT: dummy(i1 true)
+; CHECK: ret void
   %notnull = icmp ne i32* %array, null
   call void @exit()
   call void @dummy(i1 %notnull)
