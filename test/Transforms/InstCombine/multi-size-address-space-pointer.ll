@@ -34,34 +34,12 @@ define i32 @test_as3(i32 addrspace(3)* %a) {
   ret i32 %y
 }
 
-define i32 @test_combine_ptrtoint(i32 addrspace(2)* %a) {
-; CHECK-LABEL: @test_combine_ptrtoint(
-; CHECK-NEXT: %y = load i32, i32 addrspace(2)* %a
-; CHECK-NEXT: ret i32 %y
-  %cast = ptrtoint i32 addrspace(2)* %a to i8
-  %castback = inttoptr i8 %cast to i32 addrspace(2)*
-  %y = load i32, i32 addrspace(2)* %castback, align 4
-  ret i32 %y
-}
-
 define i8 @test_combine_inttoptr(i8 %a) {
 ; CHECK-LABEL: @test_combine_inttoptr(
 ; CHECK-NEXT: ret i8 %a
   %cast = inttoptr i8 %a to i32 addrspace(2)*
   %castback = ptrtoint i32 addrspace(2)* %cast to i8
   ret i8 %castback
-}
-
-define i32 @test_combine_vector_ptrtoint(<2 x i32 addrspace(2)*> %a) {
-; CHECK-LABEL: @test_combine_vector_ptrtoint(
-; CHECK-NEXT: %p = extractelement <2 x i32 addrspace(2)*> %a, i32 0
-; CHECK-NEXT: %y = load i32, i32 addrspace(2)* %p, align 4
-; CHECK-NEXT: ret i32 %y
-  %cast = ptrtoint <2 x i32 addrspace(2)*> %a to <2 x i8>
-  %castback = inttoptr <2 x i8> %cast to <2 x i32 addrspace(2)*>
-  %p = extractelement <2 x i32 addrspace(2)*> %castback, i32 0
-  %y = load i32, i32 addrspace(2)* %p, align 4
-  ret i32 %y
 }
 
 define <2 x i8> @test_combine_vector_inttoptr(<2 x i8> %a) {
