@@ -52,7 +52,7 @@ bb:             ; preds = %entry
         ret i8 0
 
 bb2:            ; preds = %entry
-; CHECK: %should_be_const = load i8, i8* @gv
+; CHECK: %should_be_const = load i8, i8* %a
         %should_be_const = load i8, i8* %a
         ret i8 %should_be_const
 }
@@ -90,7 +90,7 @@ entry:
 
 loop:
   %phi = phi i32* [ %sel, %loop ], [ %x, %entry ]
-; CHECK: %phi = phi i32* [ %f, %loop ], [ %x, %entry ]
+; CHECK: %phi = phi i32* [ %sel, %loop ], [ %x, %entry ]
   %f = tail call i32* @f(i32* %phi)
   %cmp1 = icmp ne i32* %f, %y
   %sel = select i1 %cmp1, i32* %f, i32* null
