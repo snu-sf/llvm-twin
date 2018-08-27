@@ -7,29 +7,9 @@ target datalayout = "e-p:32:32:32-p1:64:64:64-p2:8:8:8-p3:16:16:16-p4:16:16:16-i
 @const_zero_i32_as1 = addrspace(1) constant i32 0
 
 @const_zero_i8_as2 = addrspace(2) constant i8 0
-@const_zero_i32_as2 = addrspace(2) constant i32 0
 
 @const_zero_i8_as3 = addrspace(3) constant i8 0
 @const_zero_i32_as3 = addrspace(3) constant i32 0
-
-; Test constant folding of inttoptr (ptrtoint constantexpr)
-; The intermediate integer size is the same as the pointer size
-define i32 addrspace(3)* @test_constant_fold_inttoptr_as_pointer_same_size() {
-; CHECK-LABEL: @test_constant_fold_inttoptr_as_pointer_same_size(
-; CHECK-NEXT: ret i32 addrspace(3)* @const_zero_i32_as3
-  %x = ptrtoint i32 addrspace(3)* @const_zero_i32_as3 to i32
-  %y = inttoptr i32 %x to i32 addrspace(3)*
-  ret i32 addrspace(3)* %y
-}
-
-; The intermediate integer size is larger than the pointer size
-define i32 addrspace(2)* @test_constant_fold_inttoptr_as_pointer_smaller() {
-; CHECK-LABEL: @test_constant_fold_inttoptr_as_pointer_smaller(
-; CHECK-NEXT: ret i32 addrspace(2)* @const_zero_i32_as2
-  %x = ptrtoint i32 addrspace(2)* @const_zero_i32_as2 to i16
-  %y = inttoptr i16 %x to i32 addrspace(2)*
-  ret i32 addrspace(2)* %y
-}
 
 ; Different address spaces that are the same size, but they are
 ; different so nothing should happen

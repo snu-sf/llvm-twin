@@ -36,7 +36,7 @@ define i32 @bar() {
 ; Save the incoming shadow value from the arguments in the __msan_va_arg_tls
 ; array.
 ; CHECK-LABEL: @bar
-; CHECK: store i32 0, i32* bitcast ([100 x i64]* @__msan_va_arg_tls to i32*), align 8
+; CHECK: store i32 0, i32* inttoptr (i64 ptrtoint ([100 x i64]* @__msan_va_arg_tls to i64) to i32*), align 8
 ; CHECK: store i64 0, i64* inttoptr (i64 add (i64 ptrtoint ([100 x i64]* @__msan_va_arg_tls to i64), i64 8) to i64*), align 8
 ; CHECK: store i64 0, i64* inttoptr (i64 add (i64 ptrtoint ([100 x i64]* @__msan_va_arg_tls to i64), i64 16) to i64*), align 8
 ; CHECK: store {{.*}} 24, {{.*}} @__msan_va_arg_overflow_size_tls
@@ -61,7 +61,7 @@ define i32 @bar4() {
 }
 
 ; CHECK-LABEL: @bar4
-; CHECK: store [2 x i64] zeroinitializer, [2 x i64]* bitcast ([100 x i64]* @__msan_va_arg_tls to [2 x i64]*), align 8
+; CHECK: store [2 x i64] zeroinitializer, [2 x i64]* inttoptr (i64 ptrtoint ([100 x i64]* @__msan_va_arg_tls to i64) to [2 x i64]*), align 8
 ; CHECK: store {{.*}} 16, {{.*}} @__msan_va_arg_overflow_size_tls
 
 ; Check i128 array.
@@ -81,7 +81,7 @@ define i32 @bar6([2 x i64]* %arg) {
 }
 
 ; CHECK-LABEL: @bar6
-; CHECK: [[SHADOW:%[0-9]+]] = bitcast [2 x i64]* bitcast ([100 x i64]* @__msan_va_arg_tls to [2 x i64]*) to i8*
+; CHECK: [[SHADOW:%[0-9]+]] = bitcast [2 x i64]* inttoptr (i64 ptrtoint ([100 x i64]* @__msan_va_arg_tls to i64) to [2 x i64]*) to i8*
 ; CHECK: call void @llvm.memcpy.p0i8.p0i8.i64(i8* [[SHADOW]], i8* {{.*}}, i64 16, i32 8, i1 false)
 ; CHECK: store {{.*}} 16, {{.*}} @__msan_va_arg_overflow_size_tls
 
