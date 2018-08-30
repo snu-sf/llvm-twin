@@ -37,11 +37,13 @@ entry:
 define void @f_3(i8 addrspace(3)** %ptr0, i8 addrspace(3)** %ptr1) {
 ; It *is* okay to convert the load/store pair to load and store
 ; integers, since pointers in address space 3 are integral.
+; -> No, converting load/store of pointers into load/store of integers
+; is always illegal.
 
 ; CHECK-LABEL: @f_3(
 entry:
-; CHECK: load i64
-; CHECK:  store i64
+; CHECK-NOT: load i64
+; CHECK-NOT:  store i64
   %val = load i8 addrspace(3)*, i8 addrspace(3)** %ptr0
   store i8 addrspace(3)* %val, i8 addrspace(3)** %ptr1
   ret void

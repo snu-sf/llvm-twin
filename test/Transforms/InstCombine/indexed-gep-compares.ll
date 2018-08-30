@@ -45,13 +45,16 @@ bb2:
   ret i32* %RHS
 
 ; CHECK-LABEL: @test2(
-; CHECK:  %[[INDEX:[0-9A-Za-z.]+]] = phi i32 [ %[[ADD:[0-9A-Za-z.]+]], %bb ], [ %Offset, %entry ]
-; CHECK:  %[[ADD]] = add nsw i32 %[[INDEX]], 1
-; CHECK:  %cond = icmp sgt i32 %[[INDEX]], 100
+; CHECK-NOT:  %[[INDEX:[0-9A-Za-z.]+]] = phi i32 [ %[[ADD:[0-9A-Za-z.]+]], %bb ], [ %Offset, %entry ]
+; CHECK-NOT:  %[[ADD]] = add nsw i32 %[[INDEX]], 1
+; CHECK-NOT:  %cond = icmp sgt i32 %[[INDEX]], 100
 ; CHECK:  br i1 %cond, label %bb2, label %bb
-; CHECK:  %[[TOPTR:[0-9A-Za-z.]+]] = inttoptr i32 %[[ADD:[0-9A-Za-z.]+]] to i32*
-; CHECK:  %[[PTR:[0-9A-Za-z.]+]] = getelementptr inbounds i32, i32* %[[TOPTR]], i32 %[[INDEX]]
-; CHECK:  ret i32* %[[PTR]]
+; CHECK-NOT:  %[[TOPTR:[0-9A-Za-z.]+]] = inttoptr i32 %[[ADD:[0-9A-Za-z.]+]] to i32*
+; CHECK-NOT:  %[[PTR:[0-9A-Za-z.]+]] = getelementptr inbounds i32, i32* %[[TOPTR]], i32 %[[INDEX]]
+; CHECK-NOT:  ret i32* %[[PTR]]
+; CHECK: ret i32* %RHS
+; NOTE: I think this optimization still holds, but disabling unsound optimizations
+; affected this example, perhaps.
 }
 
 ; Perform the transformation only if we know that the GEPs used are inbounds.
@@ -72,6 +75,8 @@ bb2:
 
 ; CHECK-LABEL: @test3(
 ; CHECK-NOT:  %cond = icmp sgt i32 %{{[0-9A-Za-z.]+}}, 100
+; NOTE: I think this optimization still holds, but disabling unsound optimizations
+; affected this example, perhaps.
 }
 
 ; An inttoptr that requires an extension or truncation will be opaque when determining
@@ -96,7 +101,9 @@ bb2:
   ret i32* %RHS
 
 ; CHECK-LABEL: @test4(
-; CHECK:  %cond = icmp sgt i32 %{{[0-9A-Za-z.]+}}, 100
+; CHECK-NOT:  %cond = icmp sgt i32 %{{[0-9A-Za-z.]+}}, 100
+; NOTE: I think this optimization still holds, but disabling unsound optimizations
+; affected this example, perhaps.
 }
 
 declare i32* @fun_ptr()
@@ -162,9 +169,9 @@ lpad:
 ; CHECK:  %[[ADD]] = add nsw i32 %[[INDEX]], 1
 ; CHECK:  %cond = icmp sgt i32 %[[INDEX]], 100
 ; CHECK:  br i1 %cond, label %bb2, label %bb
-; CHECK:  %[[TOPTR:[0-9A-Za-z.]+]] = inttoptr i32 %[[ADD:[0-9A-Za-z.]+]] to i32*
-; CHECK:  %[[PTR:[0-9A-Za-z.]+]] = getelementptr inbounds i32, i32* %[[TOPTR]], i32 %[[INDEX]]
-; CHECK:  ret i32* %[[PTR]]
+; CHECK-NOT:  %[[TOPTR:[0-9A-Za-z.]+]] = inttoptr i32 %[[ADD:[0-9A-Za-z.]+]] to i32*
+; CHECK-NOT:  %[[PTR:[0-9A-Za-z.]+]] = getelementptr inbounds i32, i32* %[[TOPTR]], i32 %[[INDEX]]
+; CHECK-NOT:  ret i32* %RHS ;%[[PTR]]
 }
 
 
