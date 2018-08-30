@@ -6,7 +6,7 @@ target datalayout = "p:64:64:64"
 define i64* @test1(i8* %x) {
 entry:
 ; CHECK-LABEL: @test1(
-; CHECK: load i64*, i64**
+; CHECK-NOT: load i64*, i64**
 ; CHECK: ret
   %a = bitcast i8* %x to i64*
   %b = load i64, i64* %a
@@ -42,7 +42,7 @@ entry:
 define i64 @test4(i8* %x) {
 entry:
 ; CHECK-LABEL: @test4(
-; CHECK: load i64, i64*
+; CHECK-NOT: load i64, i64*
 ; CHECK: ret
   %a = bitcast i8* %x to i64**
   %b = load i64*, i64** %a
@@ -54,7 +54,7 @@ entry:
 define i32 @test5(i8* %x) {
 entry:
 ; CHECK-LABEL: @test5(
-; CHECK: load i64, i64*
+; CHECK-NOT: load i64, i64*
 ; CHECK: trunc
 ; CHECK: ret
   %a = bitcast i8* %x to i32**
@@ -67,7 +67,7 @@ entry:
 define i64 @test6(i8* %x) {
 entry:
 ; CHECK-LABEL: @test6(
-; CHECK: load i64, i64*
+; CHECK-NOT: load i64, i64*
 ; CHECK: ret
   %a = bitcast i8* %x to i32**
   %b = load i32*, i32** %a

@@ -864,8 +864,8 @@ define %struct.C* @test45(%struct.C* %c1, %struct.C** %c2) {
   ret %struct.C* %gep
 
 ; CHECK-LABEL: @test45(
-; CHECK-NEXT:  [[BITCAST:%.*]] = bitcast %struct.C** %c2 to %struct.C*
-; CHECK-NEXT:  ret %struct.C* [[BITCAST]]
+; CHECK-NOT:  [[BITCAST:%.*]] = bitcast %struct.C** %c2 to %struct.C*
+; CHECK-NOT:  ret %struct.C* [[BITCAST]]
 }
 
 define %struct.C* @test46(%struct.C* %c1, %struct.C* %c2, i64 %N) {

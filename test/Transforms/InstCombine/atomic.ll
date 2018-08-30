@@ -248,10 +248,10 @@ define i32 @test21(i32** %p, i8* %v) {
 
 define void @pr27490a(i8** %p1, i8** %p2) {
 ; CHECK-LABEL: define void @pr27490
-; CHECK: %1 = bitcast i8** %p1 to i64*
-; CHECK: %l1 = load i64, i64* %1, align 8
-; CHECK: %2 = bitcast i8** %p2 to i64*
-; CHECK: store volatile i64 %l1, i64* %2, align 8
+; CHECK-NOT: %1 = bitcast i8** %p1 to i64*
+; CHECK-NOT: %l1 = load i64, i64* %1, align 8
+; CHECK-NOT: %2 = bitcast i8** %p2 to i64*
+; CHECK-NOT: store volatile i64 %l1, i64* %2, align 8
   %l = load i8*, i8** %p1
   store volatile i8* %l, i8** %p2
   ret void
@@ -259,10 +259,10 @@ define void @pr27490a(i8** %p1, i8** %p2) {
 
 define void @pr27490b(i8** %p1, i8** %p2) {
 ; CHECK-LABEL: define void @pr27490
-; CHECK: %1 = bitcast i8** %p1 to i64*
-; CHECK: %l1 = load i64, i64* %1, align 8
-; CHECK: %2 = bitcast i8** %p2 to i64*
-; CHECK: store atomic i64 %l1, i64* %2 seq_cst, align 8
+; CHECK-NOT: %1 = bitcast i8** %p1 to i64*
+; CHECK-NOT: %l1 = load i64, i64* %1, align 8
+; CHECK-NOT: %2 = bitcast i8** %p2 to i64*
+; CHECK-NOT: store atomic i64 %l1, i64* %2 seq_cst, align 8
   %l = load i8*, i8** %p1
   store atomic i8* %l, i8** %p2 seq_cst, align 8
   ret void

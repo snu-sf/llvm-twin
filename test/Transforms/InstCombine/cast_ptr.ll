@@ -20,8 +20,9 @@ define i8* @test1(i8* %t) {
 }
 
 ; These casts should be folded away.
+; -> This transformation is incorrect.
 ; CHECK-LABEL: @test2(
-; CHECK: icmp eq i8* %a, %b
+; CHECK-NOT: icmp eq i8* %a, %b
 define i1 @test2(i8* %a, i8* %b) {
         %tmpa = ptrtoint i8* %a to i32          ; <i32> [#uses=1]
         %tmpb = ptrtoint i8* %b to i32          ; <i32> [#uses=1]
@@ -30,8 +31,9 @@ define i1 @test2(i8* %a, i8* %b) {
 }
 
 ; These casts should be folded away.
+; -> This transformation is incorrect.
 ; CHECK-LABEL: @test2_as2_same_int(
-; CHECK: icmp eq i8 addrspace(2)* %a, %b
+; CHECK-NOT: icmp eq i8 addrspace(2)* %a, %b
 define i1 @test2_as2_same_int(i8 addrspace(2)* %a, i8 addrspace(2)* %b) {
   %tmpa = ptrtoint i8 addrspace(2)* %a to i16
   %tmpb = ptrtoint i8 addrspace(2)* %b to i16
@@ -40,8 +42,9 @@ define i1 @test2_as2_same_int(i8 addrspace(2)* %a, i8 addrspace(2)* %b) {
 }
 
 ; These casts should be folded away.
+; -> This transformation is incorrect.
 ; CHECK-LABEL: @test2_as2_larger(
-; CHECK: icmp eq i8 addrspace(2)* %a, %b
+; CHECK-NOT: icmp eq i8 addrspace(2)* %a, %b
 define i1 @test2_as2_larger(i8 addrspace(2)* %a, i8 addrspace(2)* %b) {
   %tmpa = ptrtoint i8 addrspace(2)* %a to i32
   %tmpb = ptrtoint i8 addrspace(2)* %b to i32
@@ -61,7 +64,8 @@ define i1 @test2_diff_as(i8* %p, i8 addrspace(1)* %q) {
 
 ; These casts should not be folded away.
 ; CHECK-LABEL: @test2_diff_as_global
-; CHECK: icmp sge i32 %i1
+; CHECK-NOT: icmp sge i32 %i1
+; CHECK: icmp sge i8 addrspace(1)* %q, inttoptr (i32 ptrtoint (i8* @global to i32) to i8 addrspace(1)*)
 define i1 @test2_diff_as_global(i8 addrspace(1)* %q) {
   %i0 = ptrtoint i8* @global to i32
   %i1 = ptrtoint i8 addrspace(1)* %q to i32
@@ -70,8 +74,9 @@ define i1 @test2_diff_as_global(i8 addrspace(1)* %q) {
 }
 
 ; These casts should also be folded away.
+; -> This transformation is incorrect.
 ; CHECK-LABEL: @test3(
-; CHECK: icmp eq i8* %a, @global
+; CHECK: icmp eq i8* %a,
 define i1 @test3(i8* %a) {
         %tmpa = ptrtoint i8* %a to i32
         %r = icmp eq i32 %tmpa, ptrtoint (i8* @global to i32)

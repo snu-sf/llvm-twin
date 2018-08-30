@@ -18,7 +18,7 @@ entry:
 define i32* @test2(i8* %x) {
 entry:
 ; CHECK-LABEL: @test2(
-; CHECK: load i32*, i32**
+; CHECK-NOT: load i32*, i32**
 ; CHECK: ret
   %a = bitcast i8* %x to i32*
   %b = load i32, i32* %a
@@ -30,7 +30,7 @@ entry:
 define i64* @test3(i8* %x) {
 entry:
 ; CHECK-LABEL: @test3(
-; CHECK: load i64*, i64**
+; CHECK-NOT: load i64*, i64**
 ; CHECK: ret
   %a = bitcast i8* %x to i32*
   %b = load i32, i32* %a
@@ -42,7 +42,7 @@ entry:
 define i64 @test4(i8* %x) {
 entry:
 ; CHECK-LABEL: @test4(
-; CHECK: load i32, i32*
+; CHECK-NOT: load i32, i32*
 ; CHECK: zext
 ; CHECK: ret
   %a = bitcast i8* %x to i64**
@@ -55,7 +55,7 @@ entry:
 define i32 @test5(i8* %x) {
 entry:
 ; CHECK-LABEL: @test5(
-; CHECK: load i32, i32*
+; CHECK-NOT: load i32, i32*
 ; CHECK: ret
   %a = bitcast i8* %x to i32**
   %b = load i32*, i32** %a
@@ -67,8 +67,7 @@ entry:
 define i64 @test6(i8* %x) {
 entry:
 ; CHECK-LABEL: @test6(
-; CHECK: load i32, i32*
-; CHECK: zext
+; CHECK-NOT: load i32, i32*
 ; CHECK: ret
   %a = bitcast i8* %x to i32**
   %b = load i32*, i32** %a
