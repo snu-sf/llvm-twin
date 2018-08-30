@@ -10,9 +10,9 @@ declare void @llvm.memcpy.p0i8.p0i8.i32(i8* nocapture, i8* nocapture, i32, i32, 
 
 define void @copy_1_byte(i8* %d, i8* %s) {
 ; ALL-LABEL: @copy_1_byte(
-; ALL-NEXT:    [[TMP1:%.*]] = load i8, i8* [[S:%.*]], align 1
-; ALL-NEXT:    store i8 [[TMP1]], i8* [[D:%.*]], align 1
-; ALL-NEXT:    ret void
+; ALL-NOT:    load
+; ALL-NOT:    store
+; ALL:    ret void
 ;
   call void @llvm.memcpy.p0i8.p0i8.i32(i8* %d, i8* %s, i32 1, i32 1, i1 false)
   ret void
@@ -20,11 +20,9 @@ define void @copy_1_byte(i8* %d, i8* %s) {
 
 define void @copy_2_bytes(i8* %d, i8* %s) {
 ; ALL-LABEL: @copy_2_bytes(
-; ALL-NEXT:    [[TMP1:%.*]] = bitcast i8* [[S:%.*]] to i16*
-; ALL-NEXT:    [[TMP2:%.*]] = bitcast i8* [[D:%.*]] to i16*
-; ALL-NEXT:    [[TMP3:%.*]] = load i16, i16* [[TMP1]], align 1
-; ALL-NEXT:    store i16 [[TMP3]], i16* [[TMP2]], align 1
-; ALL-NEXT:    ret void
+; ALL-NOT:    load
+; ALL-NOT:    store
+; ALL:    ret void
 ;
   call void @llvm.memcpy.p0i8.p0i8.i32(i8* %d, i8* %s, i32 2, i32 1, i1 false)
   ret void
@@ -43,11 +41,9 @@ define void @copy_3_bytes(i8* %d, i8* %s) {
 
 define void @copy_4_bytes(i8* %d, i8* %s) {
 ; ALL-LABEL: @copy_4_bytes(
-; ALL-NEXT:    [[TMP1:%.*]] = bitcast i8* [[S:%.*]] to i32*
-; ALL-NEXT:    [[TMP2:%.*]] = bitcast i8* [[D:%.*]] to i32*
-; ALL-NEXT:    [[TMP3:%.*]] = load i32, i32* [[TMP1]], align 1
-; ALL-NEXT:    store i32 [[TMP3]], i32* [[TMP2]], align 1
-; ALL-NEXT:    ret void
+; ALL-NOT:    load
+; ALL-NOT:    store
+; ALL:    ret void
 ;
   call void @llvm.memcpy.p0i8.p0i8.i32(i8* %d, i8* %s, i32 4, i32 1, i1 false)
   ret void
@@ -66,11 +62,9 @@ define void @copy_5_bytes(i8* %d, i8* %s) {
 
 define void @copy_8_bytes(i8* %d, i8* %s) {
 ; ALL-LABEL: @copy_8_bytes(
-; ALL-NEXT:    [[TMP1:%.*]] = bitcast i8* [[S:%.*]] to i64*
-; ALL-NEXT:    [[TMP2:%.*]] = bitcast i8* [[D:%.*]] to i64*
-; ALL-NEXT:    [[TMP3:%.*]] = load i64, i64* [[TMP1]], align 1
-; ALL-NEXT:    store i64 [[TMP3]], i64* [[TMP2]], align 1
-; ALL-NEXT:    ret void
+; ALL-NOT:    load
+; ALL-NOT:    store
+; ALL:    ret void
 ;
   call void @llvm.memcpy.p0i8.p0i8.i32(i8* %d, i8* %s, i32 8, i32 1, i1 false)
   ret void

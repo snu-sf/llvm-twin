@@ -144,7 +144,8 @@ define void @test9(%struct_type* %a) {
 entry:
   %inalloca.save = call i8* @llvm.stacksave()
   %argmem = alloca inalloca <{ %struct_type }>
-; CHECK: alloca inalloca i64, align 8
+; CHECK-NOT: alloca inalloca i64, align 8
+; CHECK: alloca inalloca <{ %struct_type }>
   %0 = getelementptr inbounds <{ %struct_type }>, <{ %struct_type }>* %argmem, i32 0, i32 0
   %1 = bitcast %struct_type* %0 to i8*
   %2 = bitcast %struct_type* %a to i8*

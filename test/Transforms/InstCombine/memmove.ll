@@ -25,13 +25,13 @@ define void @test2(i8* %A, i32 %N) {
 
 define i32 @test3([1024 x i8]* %target) { ; arg: [1024 x i8]*> [#uses=1]
   ;; CHECK-LABEL: test3
-  ;; CHECK-NEXT: [[P1:%[^\s]+]] = bitcast [1024 x i8]* %target to i16*
-  ;; CHECK-NEXT: store i16 104, i16* [[P1]], align 2
-  ;; CHECK-NEXT: [[P2:%[^\s]+]] = bitcast [1024 x i8]* %target to i32*
-  ;; CHECK-NEXT: store i32 7103848, i32* [[P2]], align 4
-  ;; CHECK-NEXT: [[P3:%[^\s]+]] = bitcast [1024 x i8]* %target to i64*
-  ;; CHECK-NEXT: store i64 33037504440198504, i64* [[P3]], align 8
-  ;; CHECK-NEXT: ret i32 0
+  ;; CHECK-NOT: [[P1:%[^\s]+]] = bitcast [1024 x i8]* %target to i16*
+  ;; CHECK-NOT: store i16 104, i16* [[P1]], align 2
+  ;; CHECK-NOT: [[P2:%[^\s]+]] = bitcast [1024 x i8]* %target to i32*
+  ;; CHECK-NOT: store i32 7103848, i32* [[P2]], align 4
+  ;; CHECK-NOT: [[P3:%[^\s]+]] = bitcast [1024 x i8]* %target to i64*
+  ;; CHECK-NOT: store i64 33037504440198504, i64* [[P3]], align 8
+  ;; CHECK: ret i32 0
   %h_p = getelementptr [2 x i8], [2 x i8]* @h, i32 0, i32 0		; <i8*> [#uses=1]
   %hel_p = getelementptr [4 x i8], [4 x i8]* @hel, i32 0, i32 0		; <i8*> [#uses=1]
   %hello_u_p = getelementptr [8 x i8], [8 x i8]* @hello_u, i32 0, i32 0		; <i8*> [#uses=1]

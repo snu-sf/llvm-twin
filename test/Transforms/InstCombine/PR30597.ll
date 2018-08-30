@@ -24,7 +24,7 @@ entry-block:
   %inttoptr = inttoptr i64 %loaded to i64*
   ret i64* %inttoptr
 ; CHECK-LABEL: @function
-; CHECK: %{{.+}} = load i64*, i64** %{{.+}}, align 8, !nonnull
+; CHECK-NOT: %{{.+}} = load i64*, i64** %{{.+}}, align 8, !nonnull
 }
 
 
