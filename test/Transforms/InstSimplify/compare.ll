@@ -7,7 +7,7 @@ define i1 @ptrtoint() {
   %tmp = ptrtoint i8* %a to i32
   %r = icmp eq i32 %tmp, 0
   ret i1 %r
-; CHECK: ret i1 false
+; CHECK-NOT: ret i1 false
 }
 
 define i1 @bitcast() {
@@ -117,7 +117,7 @@ define i1 @gep8(%gept* %x) {
 define i1 @gep9(i8* %ptr) {
 ; CHECK-LABEL: @gep9(
 ; CHECK-NOT: ret
-; CHECK: ret i1 true
+; CHECK: ret i1 %cmp
 
 entry:
   %first1 = getelementptr inbounds i8, i8* %ptr, i32 0
@@ -137,7 +137,7 @@ entry:
 define i1 @gep10(i8* %ptr) {
 ; CHECK-LABEL: @gep10(
 ; CHECK-NOT: ret
-; CHECK: ret i1 true
+; CHECK: ret i1 %cmp
 
 entry:
   %first1 = getelementptr inbounds i8, i8* %ptr, i32 -2
@@ -226,7 +226,7 @@ define i1 @gep17() {
   %pti2 = ptrtoint i8* %gep2 to i32
   %cmp = icmp ugt i32 %pti1, %pti2
   ret i1 %cmp
-; CHECK-NEXT: ret i1 true
+; CHECK: ret i1 %cmp
 }
 
 define i1 @zext(i32 %x) {

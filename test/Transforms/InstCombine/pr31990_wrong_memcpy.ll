@@ -22,5 +22,6 @@ declare void @bar(i4*)
 declare void @gaz(i8*)
 
 ; The mempcy should be simplified to a single store of an i8, not i4
-; CHECK: store i8 -1
+; CHECK-NOT: store i8 -1
 ; CHECK-NOT: store i4 -1
+; CHECK: llvm.memcpy.p0i8.p0i8.i32({{.*}}, i32 1, i32 1, i1 false)

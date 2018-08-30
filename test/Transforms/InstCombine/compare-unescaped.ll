@@ -11,7 +11,11 @@ define i1 @compare_global_trivialeq() {
   %cmp = icmp eq i32* %bc, %lgp
   ret i1 %cmp
 ; CHECK-LABEL: compare_global_trivialeq
-; CHECK: ret i1 false
+; CHECK-NOT: ret i1 false
+; CHECK: ret i1 %cmp
+; NOTE: In this example, optimizing %cmp into false is
+; correct, but this is not optimized because our modification
+; is conservative
 }
 
 define i1 @compare_global_trivialne() {
@@ -21,7 +25,11 @@ define i1 @compare_global_trivialne() {
   %cmp = icmp ne i32* %bc, %lgp
   ret i1 %cmp
 ; CHECK-LABEL: compare_global_trivialne
-; CHECK: ret i1 true
+; CHECK-NOT: ret i1 true
+; CHECK: ret i1 %cmp
+; NOTE: In this example, optimizing %cmp into false is
+; correct, but this is not optimized because our modification
+; is conservative
 }
 
 
@@ -37,7 +45,11 @@ define i1 @compare_and_call_with_deopt() {
   %cmp = icmp eq i32* %lgp, %bc
   tail call void @f() [ "deopt"(i8* %m) ]
   ret i1 %cmp
-; CHECK: ret i1 false
+; CHECK-NOT: ret i1 false
+; CHECK: ret i1 %cmp
+; NOTE: In this example, optimizing %cmp into false is
+; correct, but this is not optimized because our modification
+; is conservative
 }
 
 ; Same functon as above with deopt operand in function f, but comparison is NE
@@ -49,7 +61,11 @@ define i1 @compare_ne_and_call_with_deopt() {
   %cmp = icmp ne i32* %lgp, %bc
   tail call void @f() [ "deopt"(i8* %m) ]
   ret i1 %cmp
-; CHECK: ret i1 true
+; CHECK-NOT: ret i1 true
+; CHECK: ret i1 %cmp
+; NOTE: In this example, optimizing %cmp into false is
+; correct, but this is not optimized because our modification
+; is conservative
 }
 
 ; Same function as above, but global not marked nonnull, and we cannot fold the comparison

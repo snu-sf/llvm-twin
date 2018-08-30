@@ -18,7 +18,8 @@ define void @bar(i32* byval %x) {
 define void @foo(i32* %x) {
 ; CHECK-LABEL: define void @foo(
 ; CHECK: llvm.lifetime.start
-; CHECK: store i32 %2, i32* %x
+; CHECK-NOT: store i32 %2, i32* %x
+; CHECK: call void @llvm.memcpy.p0i8.p0i8.i64(i8* %2, i8* %3, i64 4, i32 1, i1 false)
   call void @bar(i32* byval %x)
   ret void
 }
@@ -32,8 +33,9 @@ define internal void @qux(i32* byval %x) {
 define void @frob(i32* %x) {
 ; CHECK-LABEL: define void @frob(
 ; CHECK: %[[POS:.*]] = alloca i32
-; CHECK: %[[VAL:.*]] = load i32, i32* %x
-; CHECK: store i32 %[[VAL]], i32* %[[POS]]
+; CHECK-NOT: %[[VAL:.*]] = load i32, i32* %x
+; CHECK-NOT: store i32 %[[VAL]], i32* %[[POS]]
+; CHECK: call void @llvm.memcpy.p0i8.p0i8.i6
 ; CHECK: {{^ *}}call void @ext(i32* nonnull %[[POS]]
 ; CHECK: tail call void @ext(i32* null)
 ; CHECK: ret void

@@ -31,7 +31,8 @@ define void @test_simplify2(i8* %dst) {
 ; CHECK-LABEL: @test_simplify2(
   %fmt = getelementptr [1 x i8], [1 x i8]* @null, i32 0, i32 0
   call i32 (i8*, i8*, ...) @sprintf(i8* %dst, i8* %fmt)
-; CHECK-NEXT: store i8 0, i8* %dst, align 1
+; CHECK-NOT: store i8 0, i8* %dst, align 1
+; CHECK-NEXT: call void @llvm.memcpy.p0i8.p0i8.i32(i8* %dst, i8* getelementptr inbounds ([1 x i8], [1 x i8]* @null, i32 0, i32 0), i32 1, i32 1, i1 false)
   ret void
 ; CHECK-NEXT: ret void
 }
@@ -40,7 +41,8 @@ define void @test_simplify3(i8* %dst) {
 ; CHECK-LABEL: @test_simplify3(
   %fmt = getelementptr [7 x i8], [7 x i8]* @null_hello, i32 0, i32 0
   call i32 (i8*, i8*, ...) @sprintf(i8* %dst, i8* %fmt)
-; CHECK-NEXT: store i8 0, i8* %dst, align 1
+; CHECK-NOT: store i8 0, i8* %dst, align 1
+; CHECK-NEXT: call void @llvm.memcpy.p0i8.p0i8.i32(i8* %dst, i8* getelementptr inbounds ([7 x i8], [7 x i8]* @null_hello, i32 0, i32 0), i32 1, i32 1, i1 false)
   ret void
 ; CHECK-NEXT: ret void
 }

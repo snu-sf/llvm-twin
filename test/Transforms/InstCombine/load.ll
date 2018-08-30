@@ -53,7 +53,8 @@ define i32 @test5(i1 %C) {
 }
 
 ; CHECK-LABEL: @test7(
-; CHECK-NOT: load
+; CHECK: load
+; NOTE: This optimization is invalid, unless inbounds tag is set.
 define i32 @test7(i32 %X) {
 	%V = getelementptr i32, i32* null, i32 %X		; <i32*> [#uses=1]
 	%R = load i32, i32* %V		; <i32> [#uses=1]

@@ -12,7 +12,7 @@ define %struct.A* @test1(%struct.A* %b, %struct.A* %e) {
   %gep = getelementptr inbounds %struct.A, %struct.A* %b, i64 %sdiv
   ret %struct.A* %gep
 ; CHECK-LABEL: @test1
-; CHECK-NEXT: ret %struct.A* %e
+; CHECK-NOT: ret %struct.A* %e
 }
 
 define i8* @test2(i8* %b, i8* %e) {
@@ -22,7 +22,7 @@ define i8* @test2(i8* %b, i8* %e) {
   %gep = getelementptr inbounds i8, i8* %b, i64 %sub
   ret i8* %gep
 ; CHECK-LABEL: @test2
-; CHECK-NEXT: ret i8* %e
+; CHECK-NOT: ret i8* %e
 }
 
 define i64* @test3(i64* %b, i64* %e) {
@@ -33,7 +33,7 @@ define i64* @test3(i64* %b, i64* %e) {
   %gep = getelementptr inbounds i64, i64* %b, i64 %ashr
   ret i64* %gep
 ; CHECK-LABEL: @test3
-; CHECK-NEXT: ret i64* %e
+; CHECK-NOT: ret i64* %e
 }
 
 define %struct.A* @test4(%struct.A* %b) {
@@ -43,7 +43,7 @@ define %struct.A* @test4(%struct.A* %b) {
   %gep = getelementptr inbounds %struct.A, %struct.A* %b, i64 %sdiv
   ret %struct.A* %gep
 ; CHECK-LABEL: @test4
-; CHECK-NEXT: ret %struct.A* null
+; CHECK-NOT: ret %struct.A* null
 }
 
 define i8* @test5(i8* %b) {
@@ -62,7 +62,7 @@ define i64* @test6(i64* %b) {
   %gep = getelementptr inbounds i64, i64* %b, i64 %ashr
   ret i64* %gep
 ; CHECK-LABEL: @test6
-; CHECK-NEXT: ret i64* null
+; CHECK-NOT: ret i64* null
 }
 
 define i8* @test7(i8* %b, i8** %e) {
