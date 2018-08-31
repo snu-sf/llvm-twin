@@ -8,7 +8,7 @@ entry:
     br i1 %cond, label %taken, label %not_taken
 
 ; CHECK-LABEL: @test1
-; CHECK: br i1 %cnd, label %yes, label %no
+; CHECK: br i1 %cond, label %no, label %yes
 ; CHECK: ret i1 true
 
 taken:

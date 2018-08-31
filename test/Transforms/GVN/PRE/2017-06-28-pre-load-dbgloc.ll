@@ -37,8 +37,8 @@ entry:
   br i1 %tobool, label %cond.end, label %cond.false, !dbg !9
 ; ALL: br i1 %tobool, label %entry.cond.end_crit_edge, label %cond.false, !dbg [[LOC_15_6:![0-9]+]]
 ; ALL: entry.cond.end_crit_edge:
-; GVN: %.pre = load %struct.node*, %struct.node** %node2.phi.trans.insert, align 8, !dbg [[LOC_16_13:![0-9]+]]
-; INSTCOMBINE: %.pre = load %struct.node*, %struct.node** %node2.phi.trans.insert, align 8, !dbg [[LOC_16_13:![0-9]+]]
+; GVN: %.pre = load %struct.node*, %struct.node** null, align 8, !dbg [[LOC_16_13:![0-9]+]]
+; INSTCOMBINE: store %struct.node* undef, %struct.node** null, align 536870912, !dbg [[LOC_16_13:![0-9]+]]
 
 cond.false:
   %0 = bitcast %struct.desc* %desc to i8***, !dbg !11

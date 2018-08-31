@@ -10,8 +10,7 @@ entry:
 loop:
 ; CHECK-LABEL: loop:
 ; CHECK-NEXT: phi
-; CHECK-NEXT: %[[A:.*]] = icmp
-; CHECK-NEXT: br i1 %[[A]], label %exit, label %loop
+; CHECK-NEXT: br label %loop
   %p1 = phi i8* [%p, %entry], [%p1, %loop]
   %cmp1 = icmp eq i8* %p1, null
   br i1 %cmp1, label %exit, label %loop
@@ -30,14 +29,13 @@ loop:
   %cmp1 = icmp eq i8* %p1, null
   br i1 %cmp1, label %exit, label %backedge
 backedge:
-; CHECK-LABEL: loop:
-; CHECK-NEXT: phi
 ; CHECK-LABEL: backedge:
+; CHECK-NEXT: phi
 ; CHECK-NEXT: bitcast
 ; CHECK-NEXT: load
 ; CHECK-NEXT: cmp
 ; CHECK-NEXT: br 
-; CHECK-DAG: label %loop
+; CHECK-DAG: label %backedge
   %addr = bitcast i8* %p1 to i8**
   %p2 = load i8*, i8** %addr
   %cmp2 = icmp eq i8* %p2, null
