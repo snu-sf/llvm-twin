@@ -6,7 +6,7 @@ define i32 @test(i32* %p) {
 ; CHECK-LABEL: @test
 ; CHECK: icmp eq
 ; CHECK-NEXT: br i1 %cmp, label %exit2, label %exit1
-; CHECK: icmp ne
+; CHECK-NOT: icmp ne
 entry:
   %cmp = icmp eq i32* %p, null
   br i1 %cmp, label %is_null, label %not_null
@@ -51,9 +51,9 @@ exit2:
 define i32 @test2(i32* %p) {
 ; CHECK-LABEL: @test
 ; CHECK-LABEL: entry:
-; CHECK-NEXT: icmp ne
 ; CHECK-NEXT: icmp eq
 ; CHECK-NEXT: br i1 %cmp, label %exit2, label %exit1
+; CHECK-NOT: icmp ne
 entry:
   %cmp2 = icmp ne i32* %p, null
   %cmp = icmp eq i32* %p, null
