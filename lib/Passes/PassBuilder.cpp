@@ -95,6 +95,7 @@
 #include "llvm/Transforms/Scalar/CorrelatedValuePropagation.h"
 #include "llvm/Transforms/Scalar/DCE.h"
 #include "llvm/Transforms/Scalar/DeadStoreElimination.h"
+#include "llvm/Transforms/Scalar/DecanonicalizeTypeToI8Ptr.h"
 #include "llvm/Transforms/Scalar/DivRemPairs.h"
 #include "llvm/Transforms/Scalar/EarlyCSE.h"
 #include "llvm/Transforms/Scalar/Float2Int.h"
@@ -773,6 +774,9 @@ PassBuilder::buildModuleOptimizationPipeline(OptimizationLevel Level,
 
   // Optimize parallel scalar instruction chains into SIMD instructions.
   OptimizePM.addPass(SLPVectorizerPass());
+
+  // Transform load (bitcast ty* to i8*) instructions to load ty*.
+  OptimizePM.addPass(DecanonicalizeTypeToI8PtrPass());
 
   OptimizePM.addPass(InstCombinePass());
 

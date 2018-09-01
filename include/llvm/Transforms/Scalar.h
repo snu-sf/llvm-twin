@@ -45,6 +45,13 @@ FunctionPass *createCanonicalizeTypeToI8PtrPass();
 
 //===----------------------------------------------------------------------===//
 //
+// DecanonicalizeTypeToI8Ptr - Decanonicalize "load/store (bitcast ptrty to i8*)"
+// to "load/store ptrty".
+//
+FunctionPass *createDecanonicalizeTypeToI8PtrPass();
+
+//===----------------------------------------------------------------------===//
+//
 // AlignmentFromAssumptions - Use assume intrinsics to set load/store
 // alignments.
 //
