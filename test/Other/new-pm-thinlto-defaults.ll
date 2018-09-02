@@ -202,7 +202,9 @@
 ; CHECK-POSTLINK-O-NEXT: Running analysis: LoopAccessAnalysis
 ; CHECK-POSTLINK-O-NEXT: Running pass: InstCombinePass
 ; CHECK-POSTLINK-O-NEXT: Running pass: SimplifyCFGPass
+; CHECK-POSTLINK-O-NEXT: Running pass: CanonicalizeTypeToI8PtrPass
 ; CHECK-POSTLINK-O-NEXT: Running pass: SLPVectorizerPass
+; CHECK-POSTLINK-O-NEXT: Running pass: DecanonicalizeTypeToI8PtrPass
 ; CHECK-POSTLINK-O-NEXT: Running pass: InstCombinePass
 ; CHECK-POSTLINK-O-NEXT: Running pass: LoopUnrollPass
 ; CHECK-POSTLINK-O-NEXT: Running analysis: OuterAnalysisManagerProxy
