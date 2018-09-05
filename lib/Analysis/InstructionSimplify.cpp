@@ -3607,32 +3607,36 @@ static Value *simplifySelectWithICmpCond(Value *CondVal, Value *TrueVal,
   // simplifying the result yields the same value as the other arm.
   bool IsPtrEq = CmpLHS->getType()->isPtrOrPtrVectorTy();
   bool IsEqPred = Pred == ICmpInst::ICMP_EQ || Pred == ICmpInst::ICMP_NE;
-  bool CanReplaceLR = IsEqPred && (!IsPtrEq ||
-      isSafeToPropagatePtrEquality(CmpLHS, CmpRHS, Q.CxtI, Q.DL, Q.DT));
-  bool CanReplaceRL = IsEqPred && (!IsPtrEq ||
-      isSafeToPropagatePtrEquality(CmpRHS, CmpLHS, Q.CxtI, Q.DL, Q.DT));
+  auto CanReplaceLR = [&CmpLHS, &CmpRHS, &Q, IsPtrEq, IsEqPred]() -> bool {
+    return IsEqPred && (!IsPtrEq ||
+           isSafeToPropagatePtrEquality(CmpLHS, CmpRHS, Q.CxtI, Q.DL, Q.DT));
+    };
+  auto CanReplaceRL = [&CmpLHS, &CmpRHS, &Q, IsPtrEq, IsEqPred]() -> bool {
+    return IsEqPred && (!IsPtrEq ||
+           isSafeToPropagatePtrEquality(CmpRHS, CmpLHS, Q.CxtI, Q.DL, Q.DT));
+    };
 
   if (Pred == ICmpInst::ICMP_EQ) {
     if ((SimplifyWithOpReplaced(FalseVal, CmpLHS, CmpRHS, Q, MaxRecurse) ==
-            TrueVal && CanReplaceLR) ||
+            TrueVal && CanReplaceLR()) ||
         (SimplifyWithOpReplaced(FalseVal, CmpRHS, CmpLHS, Q, MaxRecurse) ==
-            TrueVal && CanReplaceRL))
+            TrueVal && CanReplaceRL()))
       return FalseVal;
     if ((SimplifyWithOpReplaced(TrueVal, CmpLHS, CmpRHS, Q, MaxRecurse) ==
-            FalseVal && CanReplaceLR) ||
+            FalseVal && CanReplaceLR()) ||
         (SimplifyWithOpReplaced(TrueVal, CmpRHS, CmpLHS, Q, MaxRecurse) ==
-            FalseVal && CanReplaceRL))
+            FalseVal && CanReplaceRL()))
       return FalseVal;
   } else if (Pred == ICmpInst::ICMP_NE && !CmpLHS->getType()->isPtrOrPtrVectorTy()) {
     if ((SimplifyWithOpReplaced(TrueVal, CmpLHS, CmpRHS, Q, MaxRecurse) ==
-            FalseVal && CanReplaceLR) ||
+            FalseVal && CanReplaceLR()) ||
         (SimplifyWithOpReplaced(TrueVal, CmpRHS, CmpLHS, Q, MaxRecurse) ==
-            FalseVal && CanReplaceRL))
+            FalseVal && CanReplaceRL()))
       return TrueVal;
     if ((SimplifyWithOpReplaced(FalseVal, CmpLHS, CmpRHS, Q, MaxRecurse) ==
-            TrueVal && CanReplaceLR) ||
+            TrueVal && CanReplaceLR()) ||
         (SimplifyWithOpReplaced(FalseVal, CmpRHS, CmpLHS, Q, MaxRecurse) ==
-            TrueVal && CanReplaceRL))
+            TrueVal && CanReplaceRL()))
       return TrueVal;
   }
 
